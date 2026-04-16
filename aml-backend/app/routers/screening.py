@@ -14,6 +14,14 @@ from app.models.interaction import Interaction
 router = APIRouter(prefix="/api/screening", tags=["Screening Engine"])
 
 
+@router.get("/data-sources")
+async def get_data_sources(
+    current_user: User = Depends(get_current_user),
+):
+    """Get information about screening data sources (UN Sanctions, PEP, etc.)."""
+    return await ScreeningService.get_data_source_info()
+
+
 @router.post("/screen", response_model=list[ScreeningResultResponse])
 async def screen_entity(
     data: ScreeningRequest,

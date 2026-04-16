@@ -11,6 +11,7 @@ import TransactionsPage from '@/pages/TransactionsPage';
 import CasesPage from '@/pages/CasesPage';
 import AuditPage from '@/pages/AuditPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
+import ComplianceInquiryPage from '@/pages/ComplianceInquiryPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -87,6 +88,13 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <AnalyticsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/compliance" element={
+        <ProtectedRoute>
+          <Layout>
+            <ComplianceInquiryPage />
           </Layout>
         </ProtectedRoute>
       } />

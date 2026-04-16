@@ -88,22 +88,31 @@ class AIAssistantService:
         pending = [s for s in screenings if s.status == MatchStatus.PENDING]
         high_risk = entity and entity.risk_level and entity.risk_level.value in ["high", "critical"]
 
-        # Decision logic
+        # Decision logic with regulatory source citations
         if true_matches:
+            un_matches = [m for m in true_matches if "UN" in (m.match_source or "")]
             suggestion = "sar_filed"
             confidence = round(0.75 + random.uniform(0, 0.2), 2)
-            reasoning = (
-                f"Confirmed screening matches found ({len(true_matches)} match(es)). "
-                "Based on regulatory requirements, a Suspicious Activity Report is recommended. "
-                "Review all confirmed matches and supporting documentation before filing."
+            un_note = (
+                f" {len(un_matches)} match(es) from the UN Security Council Consolidated Sanctions List."
+                if un_matches else ""
             )
-            risk_factors = [f"Confirmed {m.screening_type.value} match: {m.matched_name}" for m in true_matches]
+            reasoning = (
+                f"Confirmed screening matches found ({len(true_matches)} match(es)).{un_note} "
+                "Per SAMA AML/CTF Guide (Section IX), a Suspicious Transaction Report (STR) "
+                "must be filed with SAFIU without delay when there are reasonable grounds for suspicion. "
+                "Review all confirmed matches and supporting documentation before filing. "
+                "Reference: SAMA Rules Governing Anti-Money Laundering & Combating Terrorist Financing."
+            )
+            risk_factors = [f"Confirmed {m.screening_type.value} match: {m.matched_name} (Source: {m.match_source})" for m in true_matches]
         elif high_risk and pending:
             suggestion = "escalate"
             confidence = round(0.5 + random.uniform(0, 0.3), 2)
             reasoning = (
                 f"Entity has {entity.risk_level.value} risk level with {len(pending)} pending screening result(s). "
-                "Recommend escalation for senior compliance officer review before final decision."
+                "Per SAMA CDD requirements, Enhanced Due Diligence (EDD) is required for high-risk clients. "
+                "Recommend escalation for senior compliance officer review before final decision. "
+                "Reference: SAMA AML/CTF Guide - Customer Due Diligence Requirements."
             )
             risk_factors = ["High risk entity", f"{len(pending)} unresolved screenings"]
         elif pending:
@@ -111,6 +120,7 @@ class AIAssistantService:
             confidence = round(0.4 + random.uniform(0, 0.3), 2)
             reasoning = (
                 f"There are {len(pending)} pending screening result(s) that need resolution. "
+                "Per SAMA compliance requirements, all screening results must be resolved and documented. "
                 "Recommend resolving all screenings before making a final case decision."
             )
             risk_factors = [f"{len(pending)} pending screenings"]
@@ -119,8 +129,9 @@ class AIAssistantService:
             confidence = round(0.6 + random.uniform(0, 0.3), 2)
             reasoning = (
                 "No confirmed screening matches and no unresolved screenings. "
-                "Based on available evidence, no further action appears warranted. "
-                "Recommend closing the case with documented rationale."
+                "Based on available evidence, including screening against the UN Security Council "
+                "Consolidated Sanctions List, no further action appears warranted. "
+                "Recommend closing the case with documented rationale per SAMA record-keeping requirements (10-year minimum)."
             )
             risk_factors = []
 
@@ -129,7 +140,11 @@ class AIAssistantService:
             "confidence": confidence,
             "reasoning": reasoning,
             "risk_factors": risk_factors,
-            "disclaimer": "This is an AI-generated suggestion. The final decision must be made by an authorized compliance officer.",
+            "regulatory_references": [
+                {"source": "SAMA", "document": "AML/CTF Guide", "url": "https://www.sama.gov.sa/en-US/Laws/BankingRules/The%20Anti-Money%20Laundering%20and%20Counter-Terrorism%20Financing%20AML%20-%20CTF%20Guide.pdf"},
+                {"source": "UN", "document": "SC Consolidated Sanctions List", "url": "https://www.un.org/securitycouncil/content/un-sc-consolidated-list"},
+            ],
+            "disclaimer": "This is an AI-generated suggestion. The final decision must be made by an authorized compliance officer per SAMA regulations.",
         }
 
     @staticmethod

@@ -94,7 +94,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-from app.routers import auth, onboarding, screening, risk, transactions, cases, audit, loops
+from app.routers import auth, onboarding, screening, risk, transactions, cases, audit, loops, compliance
 
 app.include_router(auth.router)
 app.include_router(onboarding.router)
@@ -104,6 +104,7 @@ app.include_router(transactions.router)
 app.include_router(cases.router)
 app.include_router(audit.router)
 app.include_router(loops.router)
+app.include_router(compliance.router)
 
 
 @app.get("/healthz")

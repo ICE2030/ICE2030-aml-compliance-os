@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, Users, Shield, AlertTriangle, CreditCard,
-  Briefcase, FileText, BarChart3, LogOut, Globe, ChevronLeft, ChevronRight, Menu
+  Briefcase, FileText, BarChart3, LogOut, Globe, ChevronLeft, ChevronRight, Menu, BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -17,6 +17,7 @@ const navItems = [
   { key: 'nav.cases', path: '/cases', icon: Briefcase },
   { key: 'nav.audit', path: '/audit', icon: FileText },
   { key: 'nav.analytics', path: '/analytics', icon: BarChart3 },
+  { key: 'nav.compliance', path: '/compliance', icon: BookOpen },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

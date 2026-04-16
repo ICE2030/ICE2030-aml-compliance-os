@@ -6,7 +6,7 @@ import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import api from '@/services/api';
-import { Shield, Search, CheckCircle, XCircle, HelpCircle, Brain, X } from 'lucide-react';
+import { Shield, Search, CheckCircle, XCircle, HelpCircle, Brain, X, Database, Globe, RefreshCw } from 'lucide-react';
 
 interface ScreeningResult {
   id: string;
@@ -15,6 +15,7 @@ interface ScreeningResult {
   matched_name: string;
   match_score: number;
   match_source: string;
+  match_details: Record<string, unknown> | null;
   status: string;
   resolution_reasoning: string | null;
   ai_suggestion: string | null;
@@ -29,8 +30,28 @@ interface Entity {
   entity_type: string;
 }
 
+interface DataSourceInfo {
+  sanctions: {
+    primary: {
+      source: string;
+      individuals_count?: number;
+      entities_count?: number;
+      total_count?: number;
+      last_updated?: string;
+    };
+    description: string;
+    description_ar: string;
+  };
+  pep: {
+    source: string;
+    description: string;
+    description_ar: string;
+    count: number;
+  };
+}
+
 export default function ScreeningPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [results, setResults] = useState<ScreeningResult[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,15 +59,18 @@ export default function ScreeningPage() {
   const [resolveForm, setResolveForm] = useState({ status: '', reasoning: '', confidence: 0.8 });
   const [screenEntityId, setScreenEntityId] = useState('');
   const [screening, setScreening] = useState(false);
+  const [dataSources, setDataSources] = useState<DataSourceInfo | null>(null);
 
   const loadData = () => {
     setLoading(true);
     Promise.all([
       api.get('/api/screening/results').catch(() => ({ data: [] })),
       api.get('/api/onboarding/entities').catch(() => ({ data: [] })),
-    ]).then(([resultsRes, entitiesRes]) => {
+      api.get('/api/screening/data-sources').catch(() => ({ data: null })),
+    ]).then(([resultsRes, entitiesRes, sourcesRes]) => {
       setResults(Array.isArray(resultsRes.data) ? resultsRes.data : []);
       setEntities(Array.isArray(entitiesRes.data) ? entitiesRes.data : []);
+      if (sourcesRes.data) setDataSources(sourcesRes.data);
     }).finally(() => setLoading(false));
   };
 
@@ -94,9 +118,66 @@ export default function ScreeningPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t('screening.title')}</h1>
-          <p className="text-slate-500 text-sm">Sanctions, PEP & Adverse Media Screening</p>
+          <p className="text-slate-500 text-sm">{t('screening.subtitle')}</p>
         </div>
       </div>
+
+      {/* Data Source Indicators */}
+      {dataSources && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Globe size={20} className="text-blue-700" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-sm text-blue-900">{t('screening.un_source')}</h3>
+                    <Badge variant="info">LIVE</Badge>
+                  </div>
+                  <p className="text-xs text-blue-700 mt-0.5">
+                    {language === 'ar' ? dataSources.sanctions.description_ar : dataSources.sanctions.description}
+                  </p>
+                  {dataSources.sanctions.primary.total_count && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      {t('screening.total_entries')}: {dataSources.sanctions.primary.total_count.toLocaleString()}
+                      {' '}({dataSources.sanctions.primary.individuals_count?.toLocaleString()} {t('screening.individuals')}, {dataSources.sanctions.primary.entities_count?.toLocaleString()} {t('screening.entities_label')})
+                    </p>
+                  )}
+                  {dataSources.sanctions.primary.last_updated && (
+                    <p className="text-xs text-blue-500 mt-0.5">
+                      {t('screening.last_updated')}: {new Date(dataSources.sanctions.primary.last_updated).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+                <Button variant="ghost" size="icon" onClick={loadData} title={t('screening.refresh')}>
+                  <RefreshCw size={16} className="text-blue-600" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-green-200 bg-green-50/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Database size={20} className="text-green-700" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-sm text-green-900">{t('screening.pep_source')}</h3>
+                  <p className="text-xs text-green-700 mt-0.5">
+                    {language === 'ar' ? dataSources.pep.description_ar : dataSources.pep.description}
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    {t('screening.total_entries')}: {dataSources.pep.count}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Screen Entity */}
       <Card>
