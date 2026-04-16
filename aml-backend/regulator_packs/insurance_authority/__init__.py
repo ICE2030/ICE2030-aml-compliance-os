@@ -25,12 +25,14 @@ def get_pack() -> RegulatorPack:
         sources=[
             SourceDef(
                 title="Insurance Authority AML/CTF Instructions",
+                key="ia_aml_ctf_instructions",
                 title_ar="تعليمات مكافحة غسل الأموال وتمويل الإرهاب - هيئة التأمين",
                 url="https://ia.gov.sa/en/Regulations",
                 source_type="regulation",
                 authority_level="tier_1",
                 language="en",
                 crawl_frequency="weekly",
+                topic_names=["Insurance AML Compliance (IA)", "Insurance KYC (IA)"],
             ),
         ],
         topics=[

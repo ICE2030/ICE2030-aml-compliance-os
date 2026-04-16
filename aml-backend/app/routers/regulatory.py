@@ -56,6 +56,8 @@ class SourceOut(BaseModel):
     last_crawled: Optional[str] = None
     last_crawl_status: Optional[str] = None
     status: str = "active"
+    pack_id: Optional[str] = None
+    seed_key: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -71,6 +73,18 @@ class SourceCreateIn(BaseModel):
     jurisdiction_id: str
     language: str = "en"
     crawl_frequency: str = "weekly"
+
+
+class SourceUpdateIn(BaseModel):
+    title: Optional[str] = None
+    title_ar: Optional[str] = None
+    url: Optional[str] = None
+    source_type: Optional[str] = None
+    authority_level: Optional[str] = None
+    language: Optional[str] = None
+    crawl_frequency: Optional[str] = None
+    is_monitored: Optional[bool] = None
+    status: Optional[str] = None
 
 
 class TopicOut(BaseModel):
@@ -116,6 +130,8 @@ class SeedResultOut(BaseModel):
     sources: int = 0
     topics: int = 0
     provisions: int = 0
+    source_topics: int = 0
+    sources_updated: int = 0
 
 
 class SourceVersionOut(BaseModel):
@@ -193,6 +209,29 @@ async def create_source(data: SourceCreateIn, db: AsyncSession = Depends(get_db)
     source = await SourceRegistryService.create_source(db, **data.model_dump())
     await db.commit()
     return source
+
+
+@router.put("/sources/{source_id}", response_model=SourceOut)
+async def update_source(source_id: str, data: SourceUpdateIn, db: AsyncSession = Depends(get_db)):
+    """Update an existing regulatory source."""
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    source = await SourceRegistryService.update_source(db, source_id, **update_data)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    await db.commit()
+    return source
+
+
+@router.delete("/sources/{source_id}", status_code=204)
+async def delete_source(source_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete a regulatory source."""
+    deleted = await SourceRegistryService.delete_source(db, source_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Source not found")
+    await db.commit()
+    return None
 
 
 @router.get("/sources/{source_id}/versions", response_model=list[SourceVersionOut])

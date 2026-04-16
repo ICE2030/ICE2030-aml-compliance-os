@@ -37,12 +37,14 @@ class RegulatorDef:
 class SourceDef:
     """Source definition for the registry."""
     title: str
+    key: str = ""  # Stable identifier within the pack (e.g. "fatf_40_recs"). Auto-generated if empty.
     url: str = ""
     source_type: str = "regulation"  # law, regulation, rulebook, circular, guidance, faq
     authority_level: str = "tier_1"  # tier_1, tier_2, tier_3, tier_4
     language: str = "en"
     crawl_frequency: str = "weekly"  # hourly, daily, weekly, monthly, manual
     title_ar: str = ""
+    topic_names: list[str] = field(default_factory=list)  # Topic names this source relates to
     crawler_config: dict = field(default_factory=dict)
     parser_config: dict = field(default_factory=dict)
 

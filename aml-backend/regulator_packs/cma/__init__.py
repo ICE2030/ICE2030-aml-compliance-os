@@ -26,21 +26,25 @@ def get_pack() -> RegulatorPack:
         sources=[
             SourceDef(
                 title="CMA AML/CTF Rules for Authorized Persons",
+                key="cma_aml_ctf_rules",
                 title_ar="قواعد مكافحة غسل الأموال وتمويل الإرهاب للأشخاص المرخص لهم",
                 url="https://cma.org.sa/en/RulesRegulations/Regulations/Pages/default.aspx",
                 source_type="rulebook",
                 authority_level="tier_1",
                 language="en",
                 crawl_frequency="weekly",
+                topic_names=["AML for Authorized Persons (CMA)", "Securities Compliance (CMA)"],
             ),
             SourceDef(
                 title="CMA Authorized Persons Regulations",
+                key="cma_authorized_persons_regs",
                 title_ar="لائحة الأشخاص المرخص لهم",
                 url="https://cma.org.sa/en/RulesRegulations/Regulations/Pages/default.aspx",
                 source_type="regulation",
                 authority_level="tier_1",
                 language="en",
                 crawl_frequency="weekly",
+                topic_names=["Securities Compliance (CMA)", "Crowdfunding Regulations (CMA)"],
             ),
         ],
         topics=[

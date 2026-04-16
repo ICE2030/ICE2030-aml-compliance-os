@@ -112,6 +112,10 @@ class Source(Base, TimestampMixin):
     status: Mapped[SourceStatus] = mapped_column(Enum(SourceStatus), default=SourceStatus.ACTIVE)
     parser_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     metadata_extra: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    # Pack provenance: which regulator pack seeded this source (null for manually created)
+    pack_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    # Stable seed key for deterministic idempotency (pack_id + source_key)
+    seed_key: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, unique=True)
 
     regulator: Mapped["Regulator"] = relationship(back_populates="sources")
     versions: Mapped[list["SourceVersion"]] = relationship(back_populates="source", order_by="SourceVersion.version_number.desc()")

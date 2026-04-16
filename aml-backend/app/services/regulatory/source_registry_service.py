@@ -102,16 +102,56 @@ class SourceRegistryService:
         await db.flush()
         return s
 
+    # Allowed fields for source updates
+    _SOURCE_UPDATABLE_FIELDS = frozenset({
+        "title", "title_ar", "url", "source_type", "authority_level",
+        "language", "crawl_frequency", "is_monitored", "status",
+        "parser_config", "metadata_extra",
+    })
+
     @staticmethod
     async def update_source(db: AsyncSession, source_id: str, **kwargs) -> Optional[Source]:
         source = await SourceRegistryService.get_source_by_id(db, source_id)
         if not source:
             return None
-        for key, value in kwargs.items():
-            if hasattr(source, key):
-                setattr(source, key, value)
+        allowed = SourceRegistryService._SOURCE_UPDATABLE_FIELDS
+        for field_name in allowed:
+            if field_name in kwargs:
+                # Direct column descriptor assignment for proper SQLAlchemy dirty tracking
+                if field_name == "title":
+                    source.title = kwargs[field_name]
+                elif field_name == "title_ar":
+                    source.title_ar = kwargs[field_name]
+                elif field_name == "url":
+                    source.url = kwargs[field_name]
+                elif field_name == "source_type":
+                    source.source_type = kwargs[field_name]
+                elif field_name == "authority_level":
+                    source.authority_level = kwargs[field_name]
+                elif field_name == "language":
+                    source.language = kwargs[field_name]
+                elif field_name == "crawl_frequency":
+                    source.crawl_frequency = kwargs[field_name]
+                elif field_name == "is_monitored":
+                    source.is_monitored = kwargs[field_name]
+                elif field_name == "status":
+                    source.status = kwargs[field_name]
+                elif field_name == "parser_config":
+                    source.parser_config = kwargs[field_name]
+                elif field_name == "metadata_extra":
+                    source.metadata_extra = kwargs[field_name]
         await db.flush()
         return source
+
+    @staticmethod
+    async def delete_source(db: AsyncSession, source_id: str) -> bool:
+        """Delete a source by ID. Returns True if deleted, False if not found."""
+        source = await SourceRegistryService.get_source_by_id(db, source_id)
+        if not source:
+            return False
+        await db.delete(source)
+        await db.flush()
+        return True
 
     @staticmethod
     async def create_source_version(
