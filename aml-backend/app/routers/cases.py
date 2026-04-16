@@ -100,8 +100,11 @@ async def get_case(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    # Check SLA
-    if case.sla_deadline and datetime.now(timezone.utc) > case.sla_deadline and not case.sla_breached:
+    # Check SLA (handle naive datetimes from SQLite)
+    sla = case.sla_deadline
+    if sla and sla.tzinfo is None:
+        sla = sla.replace(tzinfo=timezone.utc)
+    if sla and datetime.now(timezone.utc) > sla and not case.sla_breached:
         case.sla_breached = True
         await db.flush()
 
@@ -151,7 +154,10 @@ async def decide_case(
         raise HTTPException(status_code=404, detail="Case not found")
 
     now = datetime.now(timezone.utc)
-    time_to_decision = int((now - case.created_at).total_seconds() / 60) if case.created_at else None
+    created = case.created_at
+    if created and created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    time_to_decision = int((now - created).total_seconds() / 60) if created else None
 
     status_map = {
         "no_action": CaseStatus.CLOSED_NO_ACTION,
