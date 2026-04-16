@@ -70,11 +70,28 @@ async def seed_default_data():
         await db.commit()
 
 
+async def seed_regulatory_data():
+    """Seed regulator pack data (jurisdictions, regulators, sources, topics, provisions)."""
+    from app.services.regulatory.seed_service import SeedService
+    async with async_session() as db:
+        try:
+            result = await SeedService.seed_all_packs(db)
+            await db.commit()
+            if result["packs_loaded"] > 0:
+                import logging
+                logging.getLogger(__name__).info(f"Seeded regulatory data: {result}")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to seed regulatory data: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import app.models  # noqa: F811 - imports all models to register with SQLAlchemy
+    import app.models.regulatory  # noqa: F811 - register regulatory models
     await init_db()
     await seed_default_data()
+    await seed_regulatory_data()
     yield
 
 
@@ -94,7 +111,7 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-from app.routers import auth, onboarding, screening, risk, transactions, cases, audit, loops, compliance
+from app.routers import auth, onboarding, screening, risk, transactions, cases, audit, loops, compliance, regulatory
 
 app.include_router(auth.router)
 app.include_router(onboarding.router)
@@ -105,6 +122,7 @@ app.include_router(cases.router)
 app.include_router(audit.router)
 app.include_router(loops.router)
 app.include_router(compliance.router)
+app.include_router(regulatory.router)
 
 
 @app.get("/healthz")
