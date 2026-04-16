@@ -29,7 +29,8 @@ async def get_db():
 # exists, the OperationalError is silently ignored — making this idempotent.
 _MIGRATIONS: list[str] = [
     "ALTER TABLE regulatory_sources ADD COLUMN pack_id VARCHAR(100)",
-    "ALTER TABLE regulatory_sources ADD COLUMN seed_key VARCHAR(200) UNIQUE",
+    "ALTER TABLE regulatory_sources ADD COLUMN seed_key VARCHAR(200)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS ix_regulatory_sources_seed_key ON regulatory_sources(seed_key)",
 ]
 
 
