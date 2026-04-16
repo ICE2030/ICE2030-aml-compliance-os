@@ -16,7 +16,7 @@ interface AuditLog {
   resource_id: string | null;
   details: Record<string, unknown> | null;
   ip_address: string | null;
-  hash: string;
+  entry_hash: string;
   previous_hash: string | null;
   created_at: string;
 }
@@ -63,7 +63,7 @@ export default function AuditPage() {
   const exportLogs = () => {
     const csv = [
       'Timestamp,Action,Resource Type,Resource ID,User ID,IP Address,Hash',
-      ...logs.map(l => `${l.created_at},${l.action},${l.resource_type},${l.resource_id || ''},${l.user_id},${l.ip_address || ''},${l.hash}`)
+      ...logs.map(l => `${l.created_at},${l.action},${l.resource_type},${l.resource_id || ''},${l.user_id},${l.ip_address || ''},${l.entry_hash}`)
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -221,7 +221,7 @@ export default function AuditPage() {
                   <td className="p-3 text-sm text-slate-500">{log.ip_address || '-'}</td>
                   <td className="p-3">
                     <div className="flex items-center gap-1">
-                      <span className="text-xs font-mono text-slate-400">{log.hash.slice(0, 12)}...</span>
+                      <span className="text-xs font-mono text-slate-400">{log.entry_hash.slice(0, 12)}...</span>
                       {log.previous_hash && (
                         <span className="text-xs text-slate-300" title={`Previous: ${log.previous_hash}`}>🔗</span>
                       )}
