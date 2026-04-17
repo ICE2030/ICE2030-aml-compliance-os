@@ -177,17 +177,34 @@ async def extract_obligations(req: ExtractRequest, db: AsyncSession = Depends(ge
     }
 
 
+class ExtractAllRequest(BaseModel):
+    force: bool = False  # If True, delete all existing obligations before re-extracting
+
+
 @router.post("/obligations/extract-all")
-async def extract_all_obligations(db: AsyncSession = Depends(get_db)):
+async def extract_all_obligations(
+    req: Optional[ExtractAllRequest] = None,
+    db: AsyncSession = Depends(get_db),
+):
     """Extract obligations from ALL provisions in the database.
 
-    This runs extraction on every provision that doesn't already have obligations.
-    Useful for batch processing after seeding.
+    By default, only processes provisions without existing obligations.
+    Pass {"force": true} to delete all existing obligations and re-extract
+    from scratch (useful after hardening changes to extraction logic).
     """
-    from sqlalchemy import select, func
+    from sqlalchemy import select, delete as sql_delete
     from app.models.regulatory.source import Provision
     from app.models.regulatory.obligation import Obligation
+    from app.models.regulatory.change import ReviewDecision
     from app.services.regulatory.obligation_extraction_service import ObligationExtractionService
+
+    deleted_count = 0
+    if req and req.force:
+        # Delete review decisions first (FK constraint), then obligations
+        await db.execute(sql_delete(ReviewDecision))
+        result = await db.execute(sql_delete(Obligation))
+        deleted_count = result.rowcount
+        await db.flush()
 
     # Get all provision IDs
     prov_result = await db.execute(select(Provision.id))
@@ -214,6 +231,7 @@ async def extract_all_obligations(db: AsyncSession = Depends(get_db)):
         "provisions_processed": len(new_prov_ids),
         "provisions_skipped": len(existing_prov_ids),
         "obligations_extracted": total_extracted,
+        "deleted_pre_existing": deleted_count,
     }
 
 
