@@ -12,6 +12,8 @@ import CasesPage from '@/pages/CasesPage';
 import AuditPage from '@/pages/AuditPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
 import ComplianceInquiryPage from '@/pages/ComplianceInquiryPage';
+import SearchPage from '@/pages/regulatory/SearchPage';
+import ReviewQueuePage from '@/pages/regulatory/ReviewQueuePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -95,6 +97,20 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <ComplianceInquiryPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reg-search" element={
+        <ProtectedRoute>
+          <Layout>
+            <SearchPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/review-queue" element={
+        <ProtectedRoute>
+          <Layout>
+            <ReviewQueuePage />
           </Layout>
         </ProtectedRoute>
       } />

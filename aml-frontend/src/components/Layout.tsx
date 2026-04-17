@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, Users, Shield, AlertTriangle, CreditCard,
-  Briefcase, FileText, BarChart3, LogOut, Globe, ChevronLeft, ChevronRight, Menu, BookOpen
+  Briefcase, FileText, BarChart3, LogOut, Globe, ChevronLeft, ChevronRight, Menu, BookOpen,
+  Search, ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -18,6 +19,8 @@ const navItems = [
   { key: 'nav.audit', path: '/audit', icon: FileText },
   { key: 'nav.analytics', path: '/analytics', icon: BarChart3 },
   { key: 'nav.compliance', path: '/compliance', icon: BookOpen },
+  { key: 'nav.reg_search', path: '/reg-search', icon: Search },
+  { key: 'nav.review_queue', path: '/review-queue', icon: ClipboardCheck },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
