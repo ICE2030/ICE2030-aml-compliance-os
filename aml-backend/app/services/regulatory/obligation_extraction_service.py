@@ -24,15 +24,18 @@ logger = logging.getLogger(__name__)
 def _get_governing_sentence(text: str, match_start: int, match_end: int) -> str:
     """Return the full sentence that contains the matched span.
 
-    Walks backward to the previous sentence boundary (. ; or start-of-text)
-    and forward to the next sentence boundary (. ; or end-of-text).
+    Walks backward to the previous period (.) or start-of-text
+    and forward to the next period (.) or end-of-text.
+    Does NOT treat semicolons as sentence boundaries because regulatory
+    text uses semicolons to separate list items within a single sentence
+    (e.g., "apply CDD when: (a) ...; (b) ...; (c) ...").
     Ensures threshold/trigger phrases are never extracted in isolation.
     """
     sent_start = match_start
-    while sent_start > 0 and text[sent_start - 1] not in '.;':
+    while sent_start > 0 and text[sent_start - 1] != '.':
         sent_start -= 1
     sent_end = match_end
-    while sent_end < len(text) and text[sent_end] not in '.;':
+    while sent_end < len(text) and text[sent_end] != '.':
         sent_end += 1
     if sent_end < len(text):
         sent_end += 1
