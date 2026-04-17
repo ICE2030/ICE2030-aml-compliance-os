@@ -16,6 +16,11 @@ class ObligationType(str, enum.Enum):
     THRESHOLD = "threshold"
     GOVERNANCE = "governance"
     RECORDKEEPING = "recordkeeping"
+    PENALTY = "penalty"
+    DEFINITION = "definition"
+    IDENTIFICATION = "identification"
+    VERIFICATION = "verification"
+    ONGOING_MONITORING = "ongoing_monitoring"
 
 
 class ExtractionMethod(str, enum.Enum):

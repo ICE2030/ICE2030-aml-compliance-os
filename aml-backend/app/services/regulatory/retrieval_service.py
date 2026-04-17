@@ -6,6 +6,10 @@ Combines three retrieval strategies:
 3. Structured: graph traversal via DB relationships (source→provision→obligation, topic→source)
 
 Each strategy returns scored results that are fused using reciprocal rank fusion (RRF).
+
+Hardened with:
+- Priority 2: Regulator-aware retrieval boost (query-parsed regulator/jurisdiction signals)
+- Priority 3: Multi-component confidence scoring (weighted, 0–1 range, better distributed)
 """
 import logging
 import math
@@ -25,6 +29,46 @@ from app.models.regulatory.source import (
 from app.models.regulatory.obligation import Obligation
 
 logger = logging.getLogger(__name__)
+
+# ── Regulator detection map (P2) ────────────────────────────────────
+# Maps query tokens/phrases to known regulator abbreviations + jurisdiction hints.
+REGULATOR_ALIASES: dict[str, tuple[str, str]] = {
+    # (alias_lowercase) → (regulator_abbreviation, jurisdiction_code)
+    "sama": ("SAMA", "SA"),
+    "saudi central bank": ("SAMA", "SA"),
+    "safiu": ("SAFIU", "SA"),
+    "saudi financial intelligence": ("SAFIU", "SA"),
+    "cma": ("CMA", "SA"),
+    "capital market authority": ("CMA", "SA"),
+    "insurance authority": ("IA", "SA"),
+    "fatf": ("FATF", "INTL"),
+    "financial action task force": ("FATF", "INTL"),
+}
+
+# Saudi-specific keywords that imply jurisdiction = SA
+SAUDI_KEYWORDS = {
+    "saudi", "ksa", "kingdom", "riyal", "sar", "sama", "safiu", "cma",
+    "crowdfunding platform", "saudi aml",
+}
+
+
+def _detect_query_regulator(query: str) -> tuple[Optional[str], Optional[str]]:
+    """Parse query for regulator mentions and jurisdiction signals.
+
+    Returns (regulator_abbreviation, jurisdiction_code) or (None, None).
+    """
+    q_lower = query.lower()
+
+    # Check multi-word aliases first (longest match)
+    for alias, (abbr, jur) in sorted(REGULATOR_ALIASES.items(), key=lambda x: -len(x[0])):
+        if alias in q_lower:
+            return abbr, jur
+
+    # Check if query implies Saudi jurisdiction even without regulator name
+    if any(kw in q_lower for kw in SAUDI_KEYWORDS):
+        return None, "SA"
+
+    return None, None
 
 
 @dataclass
@@ -121,6 +165,89 @@ def _rrf_fuse(ranked_lists: list[list[tuple[str, float]]], k: int = 60) -> list[
     return sorted(scores.items(), key=lambda x: x[1], reverse=True)
 
 
+def _compute_confidence(
+    citations: list["Citation"],
+    retrieval_methods_used: list[str],
+    query_regulator: Optional[str],
+    query_jurisdiction: Optional[str],
+) -> float:
+    """Compute a weighted, interpretable confidence score in 0–1 range.
+
+    Components (P3):
+    - retrieval_relevance (0.30): normalized top-N RRF score spread
+    - method_coverage   (0.15): how many retrieval strategies contributed
+    - regulator_match   (0.20): does the top result match query regulator?
+    - jurisdiction_match(0.15): does the top result match query jurisdiction?
+    - authority_fit     (0.10): proportion of binding (tier_1) sources
+    - answer_support    (0.10): how many citations support the answer
+    """
+    if not citations:
+        return 0.0
+
+    weights = {
+        "retrieval_relevance": 0.30,
+        "method_coverage": 0.15,
+        "regulator_match": 0.20,
+        "jurisdiction_match": 0.15,
+        "authority_fit": 0.10,
+        "answer_support": 0.10,
+    }
+
+    scores: dict[str, float] = {}
+
+    # 1. Retrieval relevance — normalize RRF scores to 0–1
+    rrf_scores = [c.relevance_score for c in citations]
+    max_rrf = max(rrf_scores) if rrf_scores else 0.001
+    # Scale: map the best possible RRF score to ~1.0
+    # A provision ranked #1 in 3 lists: 3 * 1/(60+1) ≈ 0.049
+    # With regulator boost multiplier (up to 3x), max becomes ~0.148
+    base_theoretical_max = 3.0 / 61.0  # ~0.049 for k=60 with 3 lists
+    # If regulator boost was applied, scores may be multiplied up to 3x
+    boost_factor = 3.0 if query_regulator else (1.5 if query_jurisdiction else 1.0)
+    theoretical_max = base_theoretical_max * boost_factor
+    norm_top = min(max_rrf / theoretical_max, 1.0)
+    scores["retrieval_relevance"] = norm_top
+
+    # 2. Method coverage — 1 method = 0.33, 2 = 0.67, 3 = 1.0
+    scores["method_coverage"] = min(len(retrieval_methods_used) / 3.0, 1.0)
+
+    # 3. Regulator match — does top citation's regulator match query intent?
+    if query_regulator:
+        top_reg = citations[0].regulator_abbreviation
+        if top_reg == query_regulator:
+            scores["regulator_match"] = 1.0
+        elif any(c.regulator_abbreviation == query_regulator for c in citations[:3]):
+            scores["regulator_match"] = 0.6
+        else:
+            scores["regulator_match"] = 0.2
+    else:
+        # No regulator signal → neutral (give partial credit)
+        scores["regulator_match"] = 0.5
+
+    # 4. Jurisdiction match
+    if query_jurisdiction:
+        top_jur = citations[0].jurisdiction_code
+        if top_jur == query_jurisdiction:
+            scores["jurisdiction_match"] = 1.0
+        elif any(c.jurisdiction_code == query_jurisdiction for c in citations[:3]):
+            scores["jurisdiction_match"] = 0.6
+        else:
+            scores["jurisdiction_match"] = 0.2
+    else:
+        scores["jurisdiction_match"] = 0.5
+
+    # 5. Authority fit — proportion of binding sources
+    binding_count = sum(1 for c in citations if c.is_binding)
+    scores["authority_fit"] = binding_count / len(citations)
+
+    # 6. Answer support — how many results, scaled to cap at 5
+    scores["answer_support"] = min(len(citations) / 5.0, 1.0)
+
+    # Weighted sum
+    confidence = sum(weights[k] * scores[k] for k in weights)
+    return round(min(max(confidence, 0.0), 1.0), 2)
+
+
 class HybridRetrievalService:
     """Orchestrates multi-strategy retrieval across the regulatory knowledge base."""
 
@@ -134,12 +261,20 @@ class HybridRetrievalService:
         authority_level_filter: Optional[str] = None,
         limit: int = 10,
     ) -> RetrievalResult:
-        """Run hybrid retrieval and return cited results."""
+        """Run hybrid retrieval and return cited results.
+
+        P2: Detects regulator mentions in the query and applies a boost
+            so regulator-specific queries rank the named regulator first.
+        P3: Uses weighted multi-component confidence scoring.
+        """
         result = RetrievalResult(query=query)
         query_tokens = _tokenize(query)
 
         if not query_tokens:
             return result
+
+        # --- P2: Detect regulator / jurisdiction intent from query ---
+        query_regulator, query_jurisdiction = _detect_query_regulator(query)
 
         # --- Load provisions with full context ---
         prov_query = (
@@ -160,6 +295,19 @@ class HybridRetrievalService:
         if not provisions:
             result.gaps_detected.append("No provisions found in the knowledge base")
             return result
+
+        # --- Pre-load provision→regulator mapping for P2 boost ---
+        prov_regulator_map: dict[str, str] = {}  # provision_id → regulator_abbreviation
+        prov_jurisdiction_map: dict[str, str] = {}  # provision_id → jurisdiction_code
+        for prov in provisions:
+            doc = await db.get(RegulatoryDocument, prov.document_id)
+            if doc:
+                reg = await db.get(Regulator, doc.regulator_id)
+                jur = await db.get(Jurisdiction, doc.jurisdiction_id)
+                if reg:
+                    prov_regulator_map[prov.id] = reg.abbreviation
+                if jur:
+                    prov_jurisdiction_map[prov.id] = jur.code
 
         # --- Strategy 1: Lexical (keyword match) ---
         lexical_ranked: list[tuple[str, float]] = []
@@ -214,7 +362,6 @@ class HybridRetrievalService:
             source_ids = list({st.source_id for st in source_topic_links})
 
             if source_ids:
-                # Find provisions from documents linked to those sources' regulators
                 source_result = await db.execute(
                     select(Source).where(Source.id.in_(source_ids))
                 )
@@ -228,12 +375,10 @@ class HybridRetrievalService:
                 )
                 doc_ids = [d.id for d in doc_result.scalars().all()]
 
-                # Score provisions from topic-linked sources higher
                 topic_prov_ids = set()
                 for prov in provisions:
                     if prov.document_id in doc_ids:
                         topic_prov_ids.add(prov.id)
-                        # Score based on number of matching topics
                         score = len([st for st in source_topic_links
                                     if st.source_id in source_ids]) / max(len(topic_ids), 1)
                         structured_ranked.append((prov.id, min(score, 1.0)))
@@ -242,26 +387,47 @@ class HybridRetrievalService:
             if structured_ranked:
                 result.retrieval_methods_used.append("structured")
 
-        # --- Fuse results with RRF ---
-        ranked_lists = [r for r in [lexical_ranked, semantic_ranked, structured_ranked] if r]
+        # --- Fuse base results with RRF ---
+        ranked_lists = [r for r in [
+            lexical_ranked, semantic_ranked, structured_ranked
+        ] if r]
         if not ranked_lists:
             result.gaps_detected.append(f"No relevant provisions found for query: {query}")
             return result
 
         fused = _rrf_fuse(ranked_lists)
+
+        # --- P2: Regulator-aware post-RRF re-ranking ---
+        # Apply a multiplicative boost to fused scores so that provisions
+        # from the query-mentioned regulator float to the top.
+        if query_regulator or query_jurisdiction:
+            boosted: list[tuple[str, float]] = []
+            for pid, score in fused:
+                multiplier = 1.0
+                prov_reg = prov_regulator_map.get(pid, "")
+                prov_jur = prov_jurisdiction_map.get(pid, "")
+
+                if query_regulator and prov_reg == query_regulator:
+                    multiplier += 1.5  # strong boost for exact regulator match
+                if query_jurisdiction and prov_jur == query_jurisdiction:
+                    multiplier += 0.5  # moderate boost for jurisdiction match
+
+                boosted.append((pid, score * multiplier))
+
+            fused = sorted(boosted, key=lambda x: x[1], reverse=True)
+            result.retrieval_methods_used.append("regulator_boost")
+
         top_prov_ids = [pid for pid, _score in fused[:limit]]
 
         # --- Build citations with full provenance ---
         prov_map = {p.id: p for p in provisions}
         fused_scores = {pid: score for pid, score in fused}
 
-        # Load related source/regulator/jurisdiction data
         for prov_id in top_prov_ids:
             prov = prov_map.get(prov_id)
             if not prov:
                 continue
 
-            # Load the document's regulator and jurisdiction
             doc = await db.get(RegulatoryDocument, prov.document_id)
             if not doc:
                 continue
@@ -269,20 +435,17 @@ class HybridRetrievalService:
             regulator = await db.get(Regulator, doc.regulator_id)
             jurisdiction = await db.get(Jurisdiction, doc.jurisdiction_id)
 
-            # Find the source for this document's regulator
             src_result = await db.execute(
                 select(Source).where(Source.regulator_id == doc.regulator_id).limit(1)
             )
             source = src_result.scalar_one_or_none()
 
             authority_level = source.authority_level if source else "tier_1"
-            # Convert enum to string if needed
             if hasattr(authority_level, 'value'):
                 authority_level = authority_level.value
 
             is_binding = authority_level in ("tier_1", "TIER_1")
 
-            # Apply authority filter if specified
             if authority_level_filter and authority_level != authority_level_filter:
                 continue
 
@@ -310,11 +473,14 @@ class HybridRetrievalService:
 
         result.total_results = len(result.citations)
 
-        # Compute overall confidence based on top scores and coverage
+        # --- P3: Weighted multi-component confidence ---
         if result.citations:
-            avg_score = sum(c.relevance_score for c in result.citations) / len(result.citations)
-            method_bonus = len(result.retrieval_methods_used) * 0.1
-            result.confidence = min(round(avg_score + method_bonus, 2), 1.0)
+            result.confidence = _compute_confidence(
+                result.citations,
+                result.retrieval_methods_used,
+                query_regulator,
+                query_jurisdiction,
+            )
         else:
             result.gaps_detected.append(f"Query returned no matching provisions: {query}")
 
