@@ -4,7 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, Users, Shield, AlertTriangle, CreditCard,
   Briefcase, FileText, BarChart3, LogOut, Globe, ChevronLeft, ChevronRight, Menu, BookOpen,
-  Search, ClipboardCheck,
+  Search, ClipboardCheck, Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -21,6 +21,7 @@ const navItems = [
   { key: 'nav.compliance', path: '/compliance', icon: BookOpen },
   { key: 'nav.reg_search', path: '/reg-search', icon: Search },
   { key: 'nav.review_queue', path: '/review-queue', icon: ClipboardCheck },
+  { key: 'nav.intelligence', path: '/intelligence', icon: Brain },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

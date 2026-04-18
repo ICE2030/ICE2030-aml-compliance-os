@@ -6,6 +6,7 @@ from app.models.transaction import Transaction, TransactionRule, TransactionAler
 from app.models.case import Case, CaseNote, CasePriority, CaseStatus, CaseType
 from app.models.audit import AuditLog
 from app.models.interaction import Interaction, LoopMetric, PatternDetection
+from app.models.intelligence import DecisionCapture, CaseMemoryEntry, IntelligenceMetric, CaseCluster
 
 __all__ = [
     "User", "Organization", "UserRole",
@@ -16,4 +17,5 @@ __all__ = [
     "Case", "CaseNote", "CasePriority", "CaseStatus", "CaseType",
     "AuditLog",
     "Interaction", "LoopMetric", "PatternDetection",
+    "DecisionCapture", "CaseMemoryEntry", "IntelligenceMetric", "CaseCluster",
 ]

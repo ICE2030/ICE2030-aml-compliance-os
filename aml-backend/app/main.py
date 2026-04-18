@@ -113,6 +113,7 @@ app.add_middleware(
 
 from app.routers import auth, onboarding, screening, risk, transactions, cases, audit, loops, compliance, regulatory
 from app.routers import regulatory_phase2
+from app.routers import intelligence
 
 app.include_router(auth.router)
 app.include_router(onboarding.router)
@@ -125,6 +126,7 @@ app.include_router(loops.router)
 app.include_router(compliance.router)
 app.include_router(regulatory.router)
 app.include_router(regulatory_phase2.router)
+app.include_router(intelligence.router)
 
 
 @app.get("/healthz")

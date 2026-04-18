@@ -14,6 +14,7 @@ import AnalyticsPage from '@/pages/AnalyticsPage';
 import ComplianceInquiryPage from '@/pages/ComplianceInquiryPage';
 import SearchPage from '@/pages/regulatory/SearchPage';
 import ReviewQueuePage from '@/pages/regulatory/ReviewQueuePage';
+import IntelligenceDashboard from '@/pages/IntelligenceDashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -111,6 +112,13 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <ReviewQueuePage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/intelligence" element={
+        <ProtectedRoute>
+          <Layout>
+            <IntelligenceDashboard />
           </Layout>
         </ProtectedRoute>
       } />
