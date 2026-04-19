@@ -38,11 +38,28 @@ _MIGRATIONS: list[str] = [
     "ALTER TABLE obligations ADD COLUMN applies_to_product_types JSON",
     "ALTER TABLE obligations ADD COLUMN condition TEXT",
     "ALTER TABLE obligations ADD COLUMN deadline VARCHAR(200)",
-    # Phase 4: control provenance
+    # Phase 4: controls table columns (may be missing if table was created before Phase 4)
+    "ALTER TABLE controls ADD COLUMN name_ar VARCHAR(300)",
+    "ALTER TABLE controls ADD COLUMN description TEXT",
+    "ALTER TABLE controls ADD COLUMN description_ar TEXT",
+    "ALTER TABLE controls ADD COLUMN frequency VARCHAR(100)",
+    "ALTER TABLE controls ADD COLUMN effectiveness_rating FLOAT",
+    "ALTER TABLE controls ADD COLUMN last_tested DATETIME",
+    "ALTER TABLE controls ADD COLUMN test_frequency VARCHAR(50)",
     "ALTER TABLE controls ADD COLUMN regulator_id VARCHAR(36)",
     "ALTER TABLE controls ADD COLUMN source_id VARCHAR(36)",
     "ALTER TABLE controls ADD COLUMN seed_key VARCHAR(200)",
-    # Phase 4: evidence seed_key
+    # Phase 4: evidence_artifacts columns
+    "ALTER TABLE evidence_artifacts ADD COLUMN name VARCHAR(300)",
+    "ALTER TABLE evidence_artifacts ADD COLUMN name_ar VARCHAR(300)",
+    "ALTER TABLE evidence_artifacts ADD COLUMN description_ar TEXT",
+    "ALTER TABLE evidence_artifacts ADD COLUMN source_system VARCHAR(200)",
+    "ALTER TABLE evidence_artifacts ADD COLUMN collection_method VARCHAR(100)",
+    "ALTER TABLE evidence_artifacts ADD COLUMN periodicity VARCHAR(100)",
+    "ALTER TABLE evidence_artifacts ADD COLUMN owner VARCHAR(200)",
+    "ALTER TABLE evidence_artifacts ADD COLUMN file_path VARCHAR(1000)",
+    "ALTER TABLE evidence_artifacts ADD COLUMN collected_at DATETIME",
+    "ALTER TABLE evidence_artifacts ADD COLUMN expires_at DATETIME",
     "ALTER TABLE evidence_artifacts ADD COLUMN seed_key VARCHAR(200)",
 ]
 
