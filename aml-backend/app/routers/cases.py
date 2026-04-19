@@ -189,7 +189,7 @@ async def decide_case(
             reasoning_text=decision.reasoning,
             user_confidence=decision.confidence_level,
             reasoning_categories=None,
-            investigation_time_seconds=time_to_decision * 60 if time_to_decision else None,
+            investigation_time_seconds=None,
             review_time_seconds=None,
             ai_disposition=ai_disposition,
         )

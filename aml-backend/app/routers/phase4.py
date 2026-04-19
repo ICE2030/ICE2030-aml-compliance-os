@@ -239,7 +239,7 @@ async def get_evidence_chain(evidence_id: str, db: AsyncSession = Depends(get_db
 # 3. Risk Scoring
 # ═══════════════════════════════════════════════════════════════════════
 
-@router.get("/risks/score-all")
+@router.post("/risks/score-all")
 async def score_all_obligations(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Score all active obligations and persist risk records."""
     scores = await RiskScoringService.score_all_obligations(db)

@@ -47,7 +47,7 @@ export default function GapAnalysisPage() {
   const handleScoreAll = async () => {
     setScoring(true);
     try {
-      await api.get('/api/phase4/risks/score-all');
+      await api.post('/api/phase4/risks/score-all');
       await loadGaps();
     } catch { /* ignore */ }
     setScoring(false);
