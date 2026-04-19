@@ -31,7 +31,7 @@ interface ExecReport {
   }>;
   by_obligation_type: Record<string, number>;
   by_review_status: Record<string, number>;
-  top_gaps: Array<{
+  high_risk_gaps: Array<{
     obligation_text: string;
     risk_severity: string;
     risk_score: number;
@@ -39,9 +39,9 @@ interface ExecReport {
   }>;
   recommendations: Array<{
     priority: string;
-    category: string;
-    text: string;
-    text_ar: string;
+    area: string;
+    recommendation: string;
+    recommendation_ar: string;
   }>;
 }
 
@@ -260,11 +260,11 @@ export default function ExecutiveReportPage() {
       </div>
 
       {/* Top gaps */}
-      {report.top_gaps && report.top_gaps.length > 0 && (
+      {report.high_risk_gaps && report.high_risk_gaps.length > 0 && (
         <div className="bg-white rounded-xl border p-5">
           <h3 className="font-semibold text-slate-800 mb-4">{t('p4.top_gaps')}</h3>
           <div className="space-y-2">
-            {report.top_gaps.slice(0, 10).map((gap, idx) => (
+            {report.high_risk_gaps.slice(0, 10).map((gap, idx) => (
               <div key={idx} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                 <span className="text-xs font-bold text-slate-400 mt-0.5">#{idx + 1}</span>
                 <div className="flex-1">
@@ -301,10 +301,10 @@ export default function ExecutiveReportPage() {
                   }`}>
                     {t(`p4.priority_${rec.priority}`)}
                   </span>
-                  <span className="text-xs text-slate-400">• {rec.category}</span>
+                  <span className="text-xs text-slate-400">• {rec.area}</span>
                 </div>
                 <p className="text-sm text-slate-800">
-                  {language === 'ar' ? rec.text_ar : rec.text}
+                  {language === 'ar' ? rec.recommendation_ar : rec.recommendation}
                 </p>
               </div>
             ))}

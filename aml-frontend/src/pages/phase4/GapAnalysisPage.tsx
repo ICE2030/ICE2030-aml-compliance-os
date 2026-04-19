@@ -6,7 +6,7 @@ import { AlertTriangle, Shield, FileText, Search, RefreshCw } from 'lucide-react
 
 interface GapSummary {
   total_obligations: number;
-  obligations_without_controls: number;
+  unmapped_obligations: number;
   controls_without_evidence: number;
   high_risk_obligations: number;
   obligations_needing_review: number;
@@ -29,7 +29,7 @@ export default function GapAnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<GapSummary | null>(null);
   const [gaps, setGaps] = useState<Record<string, Gap[]>>({});
-  const [activeTab, setActiveTab] = useState('unmapped');
+  const [activeTab, setActiveTab] = useState('unmapped_obligations');
   const [scoring, setScoring] = useState(false);
 
   const loadGaps = async () => {
@@ -54,10 +54,10 @@ export default function GapAnalysisPage() {
   };
 
   const tabs = [
-    { key: 'unmapped', label: t('p4.gap_unmapped'), icon: Shield, count: summary?.obligations_without_controls || 0, color: 'text-red-600' },
-    { key: 'no_evidence', label: t('p4.gap_no_evidence'), icon: FileText, count: summary?.controls_without_evidence || 0, color: 'text-amber-600' },
-    { key: 'high_risk', label: t('p4.gap_high_risk'), icon: AlertTriangle, count: summary?.high_risk_obligations || 0, color: 'text-red-600' },
-    { key: 'needs_review', label: t('p4.gap_needs_review'), icon: Search, count: summary?.obligations_needing_review || 0, color: 'text-blue-600' },
+    { key: 'unmapped_obligations', label: t('p4.gap_unmapped'), icon: Shield, count: summary?.unmapped_obligations || 0, color: 'text-red-600' },
+    { key: 'controls_without_evidence', label: t('p4.gap_no_evidence'), icon: FileText, count: summary?.controls_without_evidence || 0, color: 'text-amber-600' },
+    { key: 'high_risk_obligations', label: t('p4.gap_high_risk'), icon: AlertTriangle, count: summary?.high_risk_obligations || 0, color: 'text-red-600' },
+    { key: 'obligations_needing_review', label: t('p4.gap_needs_review'), icon: Search, count: summary?.obligations_needing_review || 0, color: 'text-blue-600' },
   ];
 
   const severityColors: Record<string, string> = {
@@ -99,7 +99,7 @@ export default function GapAnalysisPage() {
             <p className="text-xs text-slate-500">{t('p4.total_obligations')}</p>
           </div>
           <div className="bg-white rounded-xl border border-red-200 p-4 text-center">
-            <p className="text-2xl font-bold text-red-600">{summary.obligations_without_controls}</p>
+            <p className="text-2xl font-bold text-red-600">{summary.unmapped_obligations}</p>
             <p className="text-xs text-slate-500">{t('p4.gap_unmapped')}</p>
           </div>
           <div className="bg-white rounded-xl border border-amber-200 p-4 text-center">
@@ -160,8 +160,8 @@ export default function GapAnalysisPage() {
                 <div className="flex-1">
                   <p className="text-slate-900 text-sm">
                     {(activeTab === 'no_evidence' && gap.control_name)
-                      ? gap.control_name
-                      : (gap.obligation_text?.substring(0, 250) + ((gap.obligation_text?.length || 0) > 250 ? '...' : ''))}
+                          ? gap.control_name
+                          : (gap.obligation_text?.substring(0, 250) + ((gap.obligation_text?.length || 0) > 250 ? '...' : ''))}
                   </p>
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {gap.obligation_type && (

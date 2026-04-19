@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.core.auth import get_current_user
+from app.models.user import User
 from app.services.regulatory.phase4_service import (
     ControlMappingService, EvidenceMappingService,
     RiskScoringService, GapAnalysisService, ExecutiveReportingService,
@@ -77,7 +79,7 @@ class EvidenceUpdate(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════
 
 @router.post("/controls")
-async def create_control(data: ControlCreate, db: AsyncSession = Depends(get_db)):
+async def create_control(data: ControlCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     control = await ControlMappingService.create_control(
         db, name=data.name, control_type=data.control_type,
         description=data.description, name_ar=data.name_ar,
@@ -97,6 +99,7 @@ async def list_controls(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     items, total = await ControlMappingService.list_controls(
         db, control_type=control_type, status=status, owner=owner, skip=skip, limit=limit,
@@ -105,7 +108,7 @@ async def list_controls(
 
 
 @router.get("/controls/{control_id}")
-async def get_control(control_id: str, db: AsyncSession = Depends(get_db)):
+async def get_control(control_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await ControlMappingService.get_control(db, control_id)
     if not result:
         raise HTTPException(status_code=404, detail="Control not found")
@@ -113,7 +116,7 @@ async def get_control(control_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/controls/{control_id}")
-async def update_control(control_id: str, data: ControlUpdate, db: AsyncSession = Depends(get_db)):
+async def update_control(control_id: str, data: ControlUpdate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     update_data = data.model_dump(exclude_none=True)
     control = await ControlMappingService.update_control(db, control_id, **update_data)
     if not control:
@@ -123,7 +126,7 @@ async def update_control(control_id: str, data: ControlUpdate, db: AsyncSession 
 
 
 @router.delete("/controls/{control_id}")
-async def delete_control(control_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_control(control_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     deleted = await ControlMappingService.delete_control(db, control_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Control not found")
@@ -132,7 +135,7 @@ async def delete_control(control_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/controls/{control_id}/map-obligation")
-async def map_obligation(control_id: str, data: ObligationMapping, db: AsyncSession = Depends(get_db)):
+async def map_obligation(control_id: str, data: ObligationMapping, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await ControlMappingService.map_obligation_to_control(
         db, obligation_id=data.obligation_id, control_id=control_id,
         mapping_confidence=data.mapping_confidence,
@@ -147,7 +150,7 @@ async def map_obligation(control_id: str, data: ObligationMapping, db: AsyncSess
 
 
 @router.delete("/controls/{control_id}/unmap-obligation/{obligation_id}")
-async def unmap_obligation(control_id: str, obligation_id: str, db: AsyncSession = Depends(get_db)):
+async def unmap_obligation(control_id: str, obligation_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     removed = await ControlMappingService.unmap_obligation_from_control(db, obligation_id, control_id)
     if not removed:
         raise HTTPException(status_code=404, detail="Mapping not found")
@@ -156,7 +159,7 @@ async def unmap_obligation(control_id: str, obligation_id: str, db: AsyncSession
 
 
 @router.get("/controls/{control_id}/obligations")
-async def get_control_obligations(control_id: str, db: AsyncSession = Depends(get_db)):
+async def get_control_obligations(control_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     return await ControlMappingService.get_control_obligations(db, control_id)
 
 
@@ -165,7 +168,7 @@ async def get_control_obligations(control_id: str, db: AsyncSession = Depends(ge
 # ═══════════════════════════════════════════════════════════════════════
 
 @router.post("/evidence")
-async def create_evidence(data: EvidenceCreate, db: AsyncSession = Depends(get_db)):
+async def create_evidence(data: EvidenceCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     ev = await EvidenceMappingService.create_evidence(
         db, control_id=data.control_id, name=data.name,
         artifact_type=data.artifact_type, description=data.description,
@@ -187,6 +190,7 @@ async def list_evidence(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     items, total = await EvidenceMappingService.list_evidence(
         db, control_id=control_id, artifact_type=artifact_type,
@@ -196,7 +200,7 @@ async def list_evidence(
 
 
 @router.get("/evidence/{evidence_id}")
-async def get_evidence(evidence_id: str, db: AsyncSession = Depends(get_db)):
+async def get_evidence(evidence_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await EvidenceMappingService.get_evidence(db, evidence_id)
     if not result:
         raise HTTPException(status_code=404, detail="Evidence not found")
@@ -204,7 +208,7 @@ async def get_evidence(evidence_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/evidence/{evidence_id}")
-async def update_evidence(evidence_id: str, data: EvidenceUpdate, db: AsyncSession = Depends(get_db)):
+async def update_evidence(evidence_id: str, data: EvidenceUpdate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     update_data = data.model_dump(exclude_none=True)
     ev = await EvidenceMappingService.update_evidence(db, evidence_id, **update_data)
     if not ev:
@@ -214,7 +218,7 @@ async def update_evidence(evidence_id: str, data: EvidenceUpdate, db: AsyncSessi
 
 
 @router.delete("/evidence/{evidence_id}")
-async def delete_evidence(evidence_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_evidence(evidence_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     deleted = await EvidenceMappingService.delete_evidence(db, evidence_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Evidence not found")
@@ -223,7 +227,7 @@ async def delete_evidence(evidence_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/evidence/{evidence_id}/chain")
-async def get_evidence_chain(evidence_id: str, db: AsyncSession = Depends(get_db)):
+async def get_evidence_chain(evidence_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Full provenance chain: Evidence -> Control -> Obligation -> Provision -> Source."""
     chain = await EvidenceMappingService.get_evidence_chain(db, evidence_id)
     if not chain:
@@ -236,7 +240,7 @@ async def get_evidence_chain(evidence_id: str, db: AsyncSession = Depends(get_db
 # ═══════════════════════════════════════════════════════════════════════
 
 @router.get("/risks/score-all")
-async def score_all_obligations(db: AsyncSession = Depends(get_db)):
+async def score_all_obligations(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Score all active obligations and persist risk records."""
     scores = await RiskScoringService.score_all_obligations(db)
     await db.commit()
@@ -244,12 +248,12 @@ async def score_all_obligations(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/risks/summary")
-async def get_risk_summary(db: AsyncSession = Depends(get_db)):
+async def get_risk_summary(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     return await RiskScoringService.get_risk_summary(db)
 
 
 @router.get("/risks/{obligation_id}")
-async def get_obligation_risk(obligation_id: str, db: AsyncSession = Depends(get_db)):
+async def get_obligation_risk(obligation_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get explainable risk score for a single obligation."""
     result = await RiskScoringService.score_obligation(db, obligation_id)
     if not result:
@@ -262,28 +266,28 @@ async def get_obligation_risk(obligation_id: str, db: AsyncSession = Depends(get
 # ═══════════════════════════════════════════════════════════════════════
 
 @router.get("/gaps")
-async def run_gap_analysis(db: AsyncSession = Depends(get_db)):
+async def run_gap_analysis(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Full gap analysis: unmapped obligations, missing evidence, high-risk items."""
     return await GapAnalysisService.run_full_analysis(db)
 
 
 @router.get("/gaps/unmapped-obligations")
-async def get_unmapped_obligations(db: AsyncSession = Depends(get_db)):
+async def get_unmapped_obligations(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     return await GapAnalysisService.obligations_without_controls(db)
 
 
 @router.get("/gaps/controls-without-evidence")
-async def get_controls_without_evidence(db: AsyncSession = Depends(get_db)):
+async def get_controls_without_evidence(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     return await GapAnalysisService.controls_without_evidence(db)
 
 
 @router.get("/gaps/high-risk")
-async def get_high_risk_obligations(db: AsyncSession = Depends(get_db)):
+async def get_high_risk_obligations(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     return await GapAnalysisService.high_risk_obligations(db)
 
 
 @router.get("/gaps/needs-review")
-async def get_obligations_needing_review(db: AsyncSession = Depends(get_db)):
+async def get_obligations_needing_review(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     return await GapAnalysisService.obligations_needing_review(db)
 
 
@@ -292,7 +296,7 @@ async def get_obligations_needing_review(db: AsyncSession = Depends(get_db)):
 # ═══════════════════════════════════════════════════════════════════════
 
 @router.get("/reports/executive")
-async def get_executive_report(db: AsyncSession = Depends(get_db)):
+async def get_executive_report(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Board-ready executive compliance report."""
     return await ExecutiveReportingService.generate_executive_report(db)
 
@@ -302,7 +306,7 @@ async def get_executive_report(db: AsyncSession = Depends(get_db)):
 # ═══════════════════════════════════════════════════════════════════════
 
 @router.post("/seed")
-async def seed_phase4_data(db: AsyncSession = Depends(get_db)):
+async def seed_phase4_data(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Seed sample controls, evidence, and mappings for demonstration."""
     from app.services.regulatory.phase4_seed_service import Phase4SeedService
     result = await Phase4SeedService.seed_all(db)

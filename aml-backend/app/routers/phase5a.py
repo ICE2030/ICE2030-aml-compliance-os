@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.core.auth import get_current_user
+from app.models.user import User
 from app.services.regulatory.phase5a_service import (
     ImprovedExtractionService,
     ControlSuggestionService,
@@ -37,7 +39,7 @@ class UpdateExpiryRequest(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════
 
 @router.post("/extract/{provision_id}")
-async def extract_obligations_v2(provision_id: str, db: AsyncSession = Depends(get_db)):
+async def extract_obligations_v2(provision_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Extract obligations from a provision using improved v2 extractor.
 
     Improvements: better classification (guidance, definition), reduced duplicates,
@@ -70,6 +72,7 @@ async def extract_obligations_v2(provision_id: str, db: AsyncSession = Depends(g
 async def extract_all_v2(
     force: bool = Query(False, description="Delete existing obligations and re-extract"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Extract obligations from ALL provisions using improved v2 logic.
 
@@ -81,7 +84,7 @@ async def extract_all_v2(
 
 
 @router.get("/compare/{provision_id}")
-async def compare_extraction(provision_id: str, db: AsyncSession = Depends(get_db)):
+async def compare_extraction(provision_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Compare v1 vs v2 extraction on a single provision.
 
     Returns side-by-side before/after for evaluation.
@@ -94,7 +97,7 @@ async def compare_extraction(provision_id: str, db: AsyncSession = Depends(get_d
 # ═══════════════════════════════════════════════════════════════════════
 
 @router.get("/suggestions/{obligation_id}")
-async def get_control_suggestion(obligation_id: str, db: AsyncSession = Depends(get_db)):
+async def get_control_suggestion(obligation_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Generate a control suggestion for a single obligation.
 
     Returns suggested control with name, objective, type, owner, frequency,
@@ -111,6 +114,7 @@ async def get_all_control_suggestions(
     only_unmapped: bool = Query(True, description="Only suggest for obligations without controls"),
     min_confidence: float = Query(0.0, description="Minimum suggestion confidence"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Generate control suggestions for all (or unmapped) obligations.
 
@@ -132,6 +136,7 @@ async def accept_control_suggestion(
     obligation_id: str,
     data: AcceptSuggestionRequest = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Accept a control suggestion — creates a real control and maps it to the obligation.
 
@@ -166,6 +171,7 @@ async def get_evidence_expiry_alerts(
     days_ahead: int = Query(30, ge=1, le=365, description="Days ahead to check for expiring evidence"),
     include_expired: bool = Query(True, description="Include already expired evidence"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get evidence expiry alerts.
 
@@ -182,6 +188,7 @@ async def renew_evidence_expiry(
     evidence_id: str,
     data: UpdateExpiryRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Update the expiry date of an evidence artifact (e.g., after renewal)."""
     try:
@@ -197,7 +204,7 @@ async def renew_evidence_expiry(
 
 
 @router.post("/alerts/evidence-expiry/auto-mark")
-async def auto_mark_expired_evidence(db: AsyncSession = Depends(get_db)):
+async def auto_mark_expired_evidence(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Automatically mark evidence with past expiry dates as 'expired' status."""
     result = await EvidenceExpiryAlertService.auto_mark_expired(db)
     await db.commit()
