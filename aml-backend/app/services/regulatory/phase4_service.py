@@ -358,6 +358,8 @@ class EvidenceMappingService:
             "evidence": EvidenceMappingService._serialize_evidence(ev),
             "control": None,
             "obligations": [],
+            "provisions": [],
+            "sources": [],
         }
         if control:
             ct = control.control_type.value if hasattr(control.control_type, 'value') else str(control.control_type)
@@ -375,6 +377,11 @@ class EvidenceMappingService:
                 prov = await db.get(Provision, ob.provision_id)
                 if prov:
                     ob_chain["provision"] = {"id": prov.id, "section_number": prov.section_number, "title": prov.title}
+                    chain["provisions"].append({
+                        "id": prov.id,
+                        "title": prov.title,
+                        "article_number": prov.section_number,
+                    })
                     doc = await db.get(RegulatoryDocument, prov.document_id)
                     if doc:
                         reg = await db.get(Regulator, doc.regulator_id)
@@ -382,6 +389,11 @@ class EvidenceMappingService:
                             "document_title": doc.title,
                             "regulator": reg.abbreviation if reg else None,
                         }
+                        chain["sources"].append({
+                            "id": doc.id,
+                            "title": doc.title,
+                            "regulator": reg.abbreviation if reg else None,
+                        })
                 chain["obligations"].append(ob_chain)
 
         return chain
@@ -419,7 +431,7 @@ _OBLIGATION_TYPE_CRITICALITY = {
     "threshold": "medium", "identification": "medium", "verification": "medium",
     "ongoing_monitoring": "medium", "recordkeeping": "medium",
     "governance": "medium", "deadline": "medium",
-    "penalty": "low", "definition": "low",
+    "penalty": "low", "definition": "low", "guidance": "low",
 }
 _SEVERITY_MAP = [
     (0.0, 0.25, "low", "unlikely"),
@@ -921,7 +933,7 @@ class ExecutiveReportingService:
                 "coverage_pct": round(d["mapped"] / d["total_obligations"] * 100, 1) if d["total_obligations"] else 0.0,
                 "by_type": dict(d["by_type"]),
                 "by_review": dict(d["by_review"]),
-                "high_risk_count": d["high_risk"],
+                "high_risk": d["high_risk"],
             }
             for abbr, d in sorted(reg_data.items())
         ]

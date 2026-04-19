@@ -172,16 +172,8 @@ async def decide_case(
         "close_other": CaseStatus.CLOSED_OTHER,
     }
 
-    case.decision = decision.decision
-    case.decision_reasoning = decision.reasoning
-    case.decision_confidence = decision.confidence_level
-    case.decided_by = current_user.id
-    case.decided_at = now
-    case.status = status_map.get(decision.decision, CaseStatus.CLOSED_OTHER)
-    case.time_to_decision_minutes = time_to_decision
-    case.ai_suggestion_accepted = decision.ai_suggestion_accepted
-
-    # Bridge to Phase 3 intelligence layer: create DecisionCapture + CaseMemory
+    # Bridge to Phase 3 intelligence layer BEFORE updating case fields,
+    # so capture_decision reads the original ai_suggestion_confidence (not user's).
     ai_disposition = None
     if decision.ai_suggestion_accepted is True:
         ai_disposition = "accepted"
@@ -203,6 +195,16 @@ async def decide_case(
         )
     except Exception as e:
         logger.warning(f"Failed to create DecisionCapture for case {case_id}: {e}")
+
+    # Now update case fields (after capture_decision read the original values)
+    case.decision = decision.decision
+    case.decision_reasoning = decision.reasoning
+    case.decision_confidence = decision.confidence_level
+    case.decided_by = current_user.id
+    case.decided_at = now
+    case.status = status_map.get(decision.decision, CaseStatus.CLOSED_OTHER)
+    case.time_to_decision_minutes = time_to_decision
+    case.ai_suggestion_accepted = decision.ai_suggestion_accepted
 
     await db.flush()
     await AuditService.log(

@@ -31,6 +31,19 @@ _MIGRATIONS: list[str] = [
     "ALTER TABLE regulatory_sources ADD COLUMN pack_id VARCHAR(100)",
     "ALTER TABLE regulatory_sources ADD COLUMN seed_key VARCHAR(200)",
     "CREATE UNIQUE INDEX IF NOT EXISTS ix_regulatory_sources_seed_key ON regulatory_sources(seed_key)",
+    # Phase 4: obligations.criticality for risk scoring
+    "ALTER TABLE obligations ADD COLUMN criticality VARCHAR(50)",
+    # Phase 5A: obligation extraction improvements
+    "ALTER TABLE obligations ADD COLUMN applies_to_entity_types JSON",
+    "ALTER TABLE obligations ADD COLUMN applies_to_product_types JSON",
+    "ALTER TABLE obligations ADD COLUMN condition TEXT",
+    "ALTER TABLE obligations ADD COLUMN deadline VARCHAR(200)",
+    # Phase 4: control provenance
+    "ALTER TABLE controls ADD COLUMN regulator_id VARCHAR(36)",
+    "ALTER TABLE controls ADD COLUMN source_id VARCHAR(36)",
+    "ALTER TABLE controls ADD COLUMN seed_key VARCHAR(200)",
+    # Phase 4: evidence seed_key
+    "ALTER TABLE evidence_artifacts ADD COLUMN seed_key VARCHAR(200)",
 ]
 
 
