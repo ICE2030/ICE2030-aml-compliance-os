@@ -52,6 +52,46 @@ class ControlStatus(str, enum.Enum):
     RETIRED = "retired"
 
 
+class EvidenceType(str, enum.Enum):
+    DOCUMENT = "document"
+    LOG = "log"
+    ATTESTATION = "attestation"
+    REPORT = "report"
+    SCREENSHOT = "screenshot"
+    CERTIFICATE = "certificate"
+    POLICY_DOC = "policy_doc"
+    TRAINING_RECORD = "training_record"
+    SYSTEM_OUTPUT = "system_output"
+
+
+class EvidenceStatus(str, enum.Enum):
+    ACTIVE = "active"
+    EXPIRED = "expired"
+    UNDER_REVIEW = "under_review"
+    ARCHIVED = "archived"
+
+
+class CollectionMethod(str, enum.Enum):
+    MANUAL = "manual"
+    AUTOMATED = "automated"
+    SEMI_AUTOMATED = "semi_automated"
+    SYSTEM_GENERATED = "system_generated"
+
+
+class RiskSeverity(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class RiskLikelihood(str, enum.Enum):
+    UNLIKELY = "unlikely"
+    POSSIBLE = "possible"
+    LIKELY = "likely"
+    ALMOST_CERTAIN = "almost_certain"
+
+
 class RiskType(str, enum.Enum):
     REGULATORY = "regulatory"
     FINANCIAL = "financial"
@@ -95,6 +135,8 @@ class Obligation(Base, TimestampMixin):
     reviewer_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Phase 4: criticality level for risk scoring
+    criticality: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # low, medium, high, critical
 
     controls: Mapped[list["ObligationControl"]] = relationship(back_populates="obligation")
     risks: Mapped[list["RegulatoryRisk"]] = relationship(back_populates="obligation")
@@ -112,9 +154,14 @@ class Control(Base, TimestampMixin):
     control_type: Mapped[ControlType] = mapped_column(Enum(ControlType))
     owner: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     status: Mapped[ControlStatus] = mapped_column(Enum(ControlStatus), default=ControlStatus.DRAFT)
-    effectiveness_rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    frequency: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # daily, weekly, monthly, quarterly, annual, continuous
+    effectiveness_rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # 0.0-1.0
     last_tested: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     test_frequency: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    # Phase 4: regulator/source context
+    regulator_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    source_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    seed_key: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, unique=True)
 
     obligations: Mapped[list["ObligationControl"]] = relationship(back_populates="control")
     evidence: Mapped[list["EvidenceArtifact"]] = relationship(back_populates="control")
@@ -138,11 +185,20 @@ class EvidenceArtifact(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     control_id: Mapped[str] = mapped_column(ForeignKey("controls.id"))
-    artifact_type: Mapped[str] = mapped_column(String(100))  # document, log, attestation, report
+    name: Mapped[str] = mapped_column(String(300), default="")
+    name_ar: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    artifact_type: Mapped[str] = mapped_column(String(100))  # document, log, attestation, report, etc.
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description_ar: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source_system: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)  # where evidence comes from
+    collection_method: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # manual, automated, etc.
+    periodicity: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # daily, weekly, monthly, etc.
+    owner: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     file_path: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     collected_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="active")
+    seed_key: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, unique=True)
 
     control: Mapped["Control"] = relationship(back_populates="evidence")
 
@@ -157,8 +213,10 @@ class RegulatoryRisk(Base, TimestampMixin):
     likelihood: Mapped[str] = mapped_column(String(50))  # unlikely, possible, likely, almost_certain
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     description_ar: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    risk_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # composite 0.0-1.0
     mitigation_status: Mapped[str] = mapped_column(String(50), default="unmitigated")
     penalty_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    risk_factors: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  # transparent breakdown
 
     obligation: Mapped["Obligation"] = relationship(back_populates="risks")
 
