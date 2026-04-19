@@ -15,6 +15,10 @@ import ComplianceInquiryPage from '@/pages/ComplianceInquiryPage';
 import SearchPage from '@/pages/regulatory/SearchPage';
 import ReviewQueuePage from '@/pages/regulatory/ReviewQueuePage';
 import IntelligenceDashboard from '@/pages/IntelligenceDashboard';
+import ControlsPage from '@/pages/phase4/ControlsPage';
+import EvidencePage from '@/pages/phase4/EvidencePage';
+import GapAnalysisPage from '@/pages/phase4/GapAnalysisPage';
+import ExecutiveReportPage from '@/pages/phase4/ExecutiveReportPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -119,6 +123,34 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <IntelligenceDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/controls" element={
+        <ProtectedRoute>
+          <Layout>
+            <ControlsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/evidence" element={
+        <ProtectedRoute>
+          <Layout>
+            <EvidencePage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/gap-analysis" element={
+        <ProtectedRoute>
+          <Layout>
+            <GapAnalysisPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/executive-report" element={
+        <ProtectedRoute>
+          <Layout>
+            <ExecutiveReportPage />
           </Layout>
         </ProtectedRoute>
       } />
