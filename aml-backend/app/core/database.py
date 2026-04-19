@@ -61,6 +61,21 @@ _MIGRATIONS: list[str] = [
     "ALTER TABLE evidence_artifacts ADD COLUMN collected_at DATETIME",
     "ALTER TABLE evidence_artifacts ADD COLUMN expires_at DATETIME",
     "ALTER TABLE evidence_artifacts ADD COLUMN seed_key VARCHAR(200)",
+    # Phase 4: regulatory_risks columns
+    "ALTER TABLE regulatory_risks ADD COLUMN description_ar TEXT",
+    "ALTER TABLE regulatory_risks ADD COLUMN risk_score FLOAT",
+    "ALTER TABLE regulatory_risks ADD COLUMN mitigation_status VARCHAR(50)",
+    "ALTER TABLE regulatory_risks ADD COLUMN penalty_description TEXT",
+    "ALTER TABLE regulatory_risks ADD COLUMN risk_factors JSON",
+    # Phase 4: regulatory_actions columns
+    "ALTER TABLE regulatory_actions ADD COLUMN deadline DATETIME",
+    "ALTER TABLE regulatory_actions ADD COLUMN assigned_to VARCHAR(200)",
+    "ALTER TABLE regulatory_actions ADD COLUMN completed_at DATETIME",
+    "ALTER TABLE regulatory_actions ADD COLUMN notes TEXT",
+    # Phase 4: obligation_controls columns
+    "ALTER TABLE obligation_controls ADD COLUMN mapping_confidence FLOAT",
+    "ALTER TABLE obligation_controls ADD COLUMN mapping_method VARCHAR(50)",
+    "ALTER TABLE obligation_controls ADD COLUMN notes TEXT",
 ]
 
 
