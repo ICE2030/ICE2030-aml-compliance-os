@@ -100,6 +100,7 @@ app = FastAPI(
     description="Anti-Money Laundering & Compliance Operating System for Saudi Arabia",
     version="1.0.0",
     lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 # Disable CORS. Do not remove this for full-stack development.
