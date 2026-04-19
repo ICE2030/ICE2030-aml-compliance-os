@@ -14,14 +14,14 @@ interface GapSummary {
 
 interface Gap {
   obligation_id: string;
-  obligation_text: string;
+  text: string;
   obligation_type: string;
   review_status: string;
   regulator?: string;
   source_title?: string;
-  risk_severity?: string;
+  severity?: string;
   risk_score?: number;
-  control_name?: string;
+  name?: string;
 }
 
 export default function GapAnalysisPage() {
@@ -159,9 +159,9 @@ export default function GapAnalysisPage() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <p className="text-slate-900 text-sm">
-                    {(activeTab === 'no_evidence' && gap.control_name)
-                          ? gap.control_name
-                          : (gap.obligation_text?.substring(0, 250) + ((gap.obligation_text?.length || 0) > 250 ? '...' : ''))}
+                    {(activeTab === 'controls_without_evidence' && gap.name)
+                          ? gap.name
+                          : (gap.text?.substring(0, 250) + ((gap.text?.length || 0) > 250 ? '...' : ''))}
                   </p>
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {gap.obligation_type && (
@@ -178,9 +178,9 @@ export default function GapAnalysisPage() {
                     )}
                   </div>
                 </div>
-                {gap.risk_severity && (
-                  <div className={`px-3 py-1 rounded-lg text-xs font-medium border ${severityColors[gap.risk_severity] || 'bg-slate-100'}`}>
-                    {t(`p4.severity_${gap.risk_severity}`)}
+                {gap.severity && (
+                  <div className={`px-3 py-1 rounded-lg text-xs font-medium border ${severityColors[gap.severity] || 'bg-slate-100'}`}>
+                    {t(`p4.severity_${gap.severity}`)}
                     {gap.risk_score !== undefined && (
                       <span className="ms-1">({(gap.risk_score * 100).toFixed(0)}%)</span>
                     )}

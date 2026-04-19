@@ -32,8 +32,8 @@ interface ExecReport {
   by_obligation_type: Record<string, number>;
   by_review_status: Record<string, number>;
   high_risk_gaps: Array<{
-    obligation_text: string;
-    risk_severity: string;
+    text: string;
+    severity: string;
     risk_score: number;
     regulator?: string;
   }>;
@@ -268,15 +268,15 @@ export default function ExecutiveReportPage() {
               <div key={idx} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                 <span className="text-xs font-bold text-slate-400 mt-0.5">#{idx + 1}</span>
                 <div className="flex-1">
-                  <p className="text-sm text-slate-800">{gap.obligation_text?.substring(0, 200)}</p>
+                  <p className="text-sm text-slate-800">{gap.text?.substring(0, 200)}</p>
                   <div className="flex gap-2 mt-1">
                     {gap.regulator && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{gap.regulator}</span>}
                     <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                      gap.risk_severity === 'critical' ? 'bg-red-100 text-red-700' :
-                      gap.risk_severity === 'high' ? 'bg-orange-100 text-orange-700' :
+                      gap.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                      gap.severity === 'high' ? 'bg-orange-100 text-orange-700' :
                       'bg-amber-100 text-amber-700'
                     }`}>
-                      {t(`p4.severity_${gap.risk_severity}`)} ({(gap.risk_score * 100).toFixed(0)}%)
+                      {t(`p4.severity_${gap.severity}`)} ({(gap.risk_score * 100).toFixed(0)}%)
                     </span>
                   </div>
                 </div>
