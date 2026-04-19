@@ -21,6 +21,7 @@ class ObligationType(str, enum.Enum):
     IDENTIFICATION = "identification"
     VERIFICATION = "verification"
     ONGOING_MONITORING = "ongoing_monitoring"
+    GUIDANCE = "guidance"
 
 
 class ExtractionMethod(str, enum.Enum):

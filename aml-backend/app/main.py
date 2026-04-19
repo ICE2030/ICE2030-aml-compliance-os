@@ -132,6 +132,7 @@ from app.routers import auth, onboarding, screening, risk, transactions, cases, 
 from app.routers import regulatory_phase2
 from app.routers import intelligence
 from app.routers import phase4
+from app.routers import phase5a
 
 app.include_router(auth.router)
 app.include_router(onboarding.router)
@@ -146,6 +147,7 @@ app.include_router(regulatory.router)
 app.include_router(regulatory_phase2.router)
 app.include_router(intelligence.router)
 app.include_router(phase4.router)
+app.include_router(phase5a.router)
 
 
 @app.get("/healthz")

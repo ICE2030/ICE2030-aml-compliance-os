@@ -19,6 +19,8 @@ import ControlsPage from '@/pages/phase4/ControlsPage';
 import EvidencePage from '@/pages/phase4/EvidencePage';
 import GapAnalysisPage from '@/pages/phase4/GapAnalysisPage';
 import ExecutiveReportPage from '@/pages/phase4/ExecutiveReportPage';
+import ControlSuggestionsPage from '@/pages/phase5a/ControlSuggestionsPage';
+import EvidenceAlertsPage from '@/pages/phase5a/EvidenceAlertsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -151,6 +153,20 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <ExecutiveReportPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/control-suggestions" element={
+        <ProtectedRoute>
+          <Layout>
+            <ControlSuggestionsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/evidence-alerts" element={
+        <ProtectedRoute>
+          <Layout>
+            <EvidenceAlertsPage />
           </Layout>
         </ProtectedRoute>
       } />
