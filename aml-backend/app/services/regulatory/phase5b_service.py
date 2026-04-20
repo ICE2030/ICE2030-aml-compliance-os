@@ -11,7 +11,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.regulatory.obligation import (
@@ -567,7 +567,7 @@ class AdvancedPatternService:
                 Obligation.obligation_type,
                 func.count(Obligation.id).label("total"),
                 func.sum(
-                    func.case(
+                    case(
                         (RegulatoryRisk.risk_score >= 0.5, 1),
                         else_=0,
                     )
@@ -649,7 +649,7 @@ class AdvancedPatternService:
                 Regulator.name,
                 func.count(RegulatoryRisk.id).label("total_risks"),
                 func.sum(
-                    func.case(
+                    case(
                         (RegulatoryRisk.risk_score >= 0.5, 1),
                         else_=0,
                     )
