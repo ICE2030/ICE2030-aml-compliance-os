@@ -21,6 +21,8 @@ import GapAnalysisPage from '@/pages/phase4/GapAnalysisPage';
 import ExecutiveReportPage from '@/pages/phase4/ExecutiveReportPage';
 import ControlSuggestionsPage from '@/pages/phase5a/ControlSuggestionsPage';
 import EvidenceAlertsPage from '@/pages/phase5a/EvidenceAlertsPage';
+import RiskTrendsDashboard from '@/pages/phase5b/RiskTrendsDashboard';
+import PatternDetectionPage from '@/pages/phase5b/PatternDetectionPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -167,6 +169,20 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <EvidenceAlertsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/risk-trends" element={
+        <ProtectedRoute>
+          <Layout>
+            <RiskTrendsDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/pattern-detection" element={
+        <ProtectedRoute>
+          <Layout>
+            <PatternDetectionPage />
           </Layout>
         </ProtectedRoute>
       } />

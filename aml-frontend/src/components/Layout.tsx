@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Shield, AlertTriangle, CreditCard,
   Briefcase, FileText, BarChart3, LogOut, Globe, ChevronLeft, ChevronRight, Menu, BookOpen,
   Search, ClipboardCheck, Brain, ShieldCheck, FileCheck, Target, PieChart,
-  Lightbulb, Bell,
+  Lightbulb, Bell, TrendingUp, SearchCode,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -29,6 +29,8 @@ const navItems = [
   { key: 'nav.exec_report', path: '/executive-report', icon: PieChart },
   { key: 'nav.control_suggestions', path: '/control-suggestions', icon: Lightbulb },
   { key: 'nav.evidence_alerts', path: '/evidence-alerts', icon: Bell },
+  { key: 'nav.risk_trends', path: '/risk-trends', icon: TrendingUp },
+  { key: 'nav.pattern_detection', path: '/pattern-detection', icon: SearchCode },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
