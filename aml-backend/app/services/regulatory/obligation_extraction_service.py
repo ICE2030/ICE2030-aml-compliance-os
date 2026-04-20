@@ -83,6 +83,14 @@ class RuleBasedExtractor:
     - CDD: identification, verification, beneficial ownership, ongoing monitoring
     """
 
+    # ── Penalty / enforcement language (used for filtering) ──────────
+    PENALTY_LANGUAGE_RE = re.compile(
+        r'\b(?:sentenced?|convicted?|punished?|penalt(?:y|ies)|imprisonment|'
+        r'fine[sd]?|confiscat(?:e|ed|ion)|years? in (?:prison|jail)|'
+        r'عقوبة|حبس|سجن|غرامة|مصادرة|يعاقب)\b',
+        re.IGNORECASE,
+    )
+
     # ── Mandatory / Prohibition ──────────────────────────────────────
     MANDATORY_PATTERNS = [
         (r'\b(?:shall|must|is required to|are required to|is obligated|are obligated)\b[^.]{10,200}\.', 'mandatory', 0.85),
@@ -204,13 +212,18 @@ class RuleBasedExtractor:
                 if len(matched_text) < RuleBasedExtractor.MIN_OBLIGATION_LENGTH:
                     continue
 
+                # Reclassify as penalty if the text contains penalty language
+                final_type = ob_type
+                if ob_type in ('mandatory', 'prohibition') and RuleBasedExtractor.PENALTY_LANGUAGE_RE.search(matched_text):
+                    final_type = 'penalty'
+
                 applies_to = RuleBasedExtractor._detect_entities(matched_text)
                 condition = RuleBasedExtractor._extract_condition(matched_text)
                 deadline = RuleBasedExtractor._extract_deadline(matched_text)
 
                 obligations.append(ExtractedObligation(
                     text=matched_text,
-                    obligation_type=ob_type,
+                    obligation_type=final_type,
                     confidence=confidence,
                     condition=condition,
                     deadline=deadline,
@@ -243,7 +256,60 @@ class RuleBasedExtractor:
                     applies_to=applies_to if applies_to else ["all_financial"],
                 ))
 
+        # --- Phase D: Deduplicate overlapping obligations ---
+        # When multiple patterns match the same (or substantially overlapping)
+        # text, keep the one with the more specific obligation type.
+        obligations = RuleBasedExtractor._deduplicate_overlapping(obligations)
+
         return obligations
+
+    @staticmethod
+    def _deduplicate_overlapping(
+        obligations: list["ExtractedObligation"],
+    ) -> list["ExtractedObligation"]:
+        """Merge obligations whose text is a substring of another's.
+
+        When two obligations share >=80% of their text (by token overlap),
+        keep the one with the more specific type. Type specificity order:
+        penalty > identification > verification > ongoing_monitoring >
+        recordkeeping > threshold > governance > reporting > deadline >
+        prohibition > mandatory.
+        """
+        TYPE_SPECIFICITY = {
+            'penalty': 11, 'identification': 10, 'verification': 9,
+            'ongoing_monitoring': 8, 'recordkeeping': 7, 'threshold': 6,
+            'governance': 5, 'reporting': 4, 'deadline': 3,
+            'prohibition': 2, 'mandatory': 1,
+        }
+        if len(obligations) <= 1:
+            return obligations
+
+        # Build token sets for cheap overlap check
+        token_sets = []
+        for ob in obligations:
+            tokens = set(re.findall(r'\w+', ob.text.lower()))
+            token_sets.append(tokens)
+
+        to_remove: set[int] = set()
+        for i in range(len(obligations)):
+            if i in to_remove:
+                continue
+            for j in range(i + 1, len(obligations)):
+                if j in to_remove:
+                    continue
+                overlap = len(token_sets[i] & token_sets[j])
+                union = len(token_sets[i] | token_sets[j]) or 1
+                if overlap / union >= 0.85:  # Jaccard similarity — truly same text
+                    # Keep the more specific one
+                    spec_i = TYPE_SPECIFICITY.get(obligations[i].obligation_type, 0)
+                    spec_j = TYPE_SPECIFICITY.get(obligations[j].obligation_type, 0)
+                    if spec_i >= spec_j:
+                        to_remove.add(j)
+                    else:
+                        to_remove.add(i)
+                        break  # i is removed, stop comparing
+
+        return [ob for idx, ob in enumerate(obligations) if idx not in to_remove]
 
     @staticmethod
     def _detect_entities(text: str) -> list[str]:

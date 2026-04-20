@@ -15,6 +15,14 @@ import ComplianceInquiryPage from '@/pages/ComplianceInquiryPage';
 import SearchPage from '@/pages/regulatory/SearchPage';
 import ReviewQueuePage from '@/pages/regulatory/ReviewQueuePage';
 import IntelligenceDashboard from '@/pages/IntelligenceDashboard';
+import ControlsPage from '@/pages/phase4/ControlsPage';
+import EvidencePage from '@/pages/phase4/EvidencePage';
+import GapAnalysisPage from '@/pages/phase4/GapAnalysisPage';
+import ExecutiveReportPage from '@/pages/phase4/ExecutiveReportPage';
+import ControlSuggestionsPage from '@/pages/phase5a/ControlSuggestionsPage';
+import EvidenceAlertsPage from '@/pages/phase5a/EvidenceAlertsPage';
+import RiskTrendsDashboard from '@/pages/phase5b/RiskTrendsDashboard';
+import PatternDetectionPage from '@/pages/phase5b/PatternDetectionPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -119,6 +127,62 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <IntelligenceDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/controls" element={
+        <ProtectedRoute>
+          <Layout>
+            <ControlsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/evidence" element={
+        <ProtectedRoute>
+          <Layout>
+            <EvidencePage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/gap-analysis" element={
+        <ProtectedRoute>
+          <Layout>
+            <GapAnalysisPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/executive-report" element={
+        <ProtectedRoute>
+          <Layout>
+            <ExecutiveReportPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/control-suggestions" element={
+        <ProtectedRoute>
+          <Layout>
+            <ControlSuggestionsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/evidence-alerts" element={
+        <ProtectedRoute>
+          <Layout>
+            <EvidenceAlertsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/risk-trends" element={
+        <ProtectedRoute>
+          <Layout>
+            <RiskTrendsDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/pattern-detection" element={
+        <ProtectedRoute>
+          <Layout>
+            <PatternDetectionPage />
           </Layout>
         </ProtectedRoute>
       } />
