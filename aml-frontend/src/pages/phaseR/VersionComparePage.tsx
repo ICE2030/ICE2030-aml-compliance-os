@@ -32,6 +32,8 @@ interface ProvisionComparison {
   versions: ProvisionVersion[];
   total_versions: number;
   has_changes: boolean;
+  classification?: string;
+  diff_en?: string;
 }
 
 export default function VersionComparePage() {
@@ -64,15 +66,69 @@ export default function VersionComparePage() {
     setLoading(true);
     try {
       const res = await api.get(`/api/phase-r/versions/document/${selectedDoc}`);
-      setProvisions(res.data.provisions || []);
+      const data = res.data || {};
+      // Backend returns { changes: [...], unchanged: [...] }
+      const changed = (data.changes || []).map((c: { provision_id: string; section_number?: string; title?: string; versions_count?: number; classification?: string; diff_en?: string }) => ({
+        provision_id: c.provision_id,
+        section_number: c.section_number,
+        title: c.title,
+        versions: [] as ProvisionVersion[],
+        total_versions: c.versions_count || 0,
+        has_changes: true,
+        classification: c.classification,
+        diff_en: c.diff_en,
+      }));
+      const unchanged = (data.unchanged || []).map((u: { provision_id: string; section_number?: string; title?: string }) => ({
+        provision_id: u.provision_id,
+        section_number: u.section_number,
+        title: u.title,
+        versions: [] as ProvisionVersion[],
+        total_versions: 1,
+        has_changes: false,
+      }));
+      setProvisions([...changed, ...unchanged]);
     } catch { /* ignore */ }
     setLoading(false);
   }, [selectedDoc]);
 
   useEffect(() => { loadComparison(); }, [loadComparison]);
 
+  // Load full version details when a provision is expanded
+  const loadProvisionVersions = useCallback(async (provisionId: string) => {
+    try {
+      const res = await api.get(`/api/phase-r/versions/provision/${provisionId}`);
+      const data = res.data || {};
+      const versions: ProvisionVersion[] = data.versions || [];
+      setProvisions(prev => prev.map(p =>
+        p.provision_id === provisionId
+          ? { ...p, versions, total_versions: data.total_versions || versions.length }
+          : p
+      ));
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleExpand = useCallback((provisionId: string) => {
+    if (expandedProvision === provisionId) {
+      setExpandedProvision('');
+    } else {
+      setExpandedProvision(provisionId);
+      // Load versions if not already loaded
+      const prov = provisions.find(p => p.provision_id === provisionId);
+      if (prov && prov.versions.length === 0) {
+        loadProvisionVersions(provisionId);
+      }
+    }
+  }, [expandedProvision, provisions, loadProvisionVersions]);
+
   const changedCount = provisions.filter(p => p.has_changes).length;
   const unchangedCount = provisions.filter(p => !p.has_changes).length;
+
+  const classificationColors: Record<string, string> = {
+    material: 'bg-red-100 text-red-700',
+    operational: 'bg-amber-100 text-amber-700',
+    interpretive: 'bg-blue-100 text-blue-700',
+    informational: 'bg-slate-100 text-slate-600',
+  };
 
   return (
     <div className="space-y-6">
@@ -142,7 +198,7 @@ export default function VersionComparePage() {
             <div key={prov.provision_id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               <button
                 className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50"
-                onClick={() => setExpandedProvision(expandedProvision === prov.provision_id ? '' : prov.provision_id)}
+                onClick={() => handleExpand(prov.provision_id)}
               >
                 <div className="flex items-center gap-3 flex-wrap">
                   <GitCompare size={16} className="text-amber-500" />
@@ -153,9 +209,9 @@ export default function VersionComparePage() {
                   <span className="text-xs text-slate-500">
                     {prov.total_versions} {t('pr.version').toLowerCase()}(s)
                   </span>
-                  {prov.has_changes && (
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700">
-                      {t('pr.modified')}
+                  {prov.classification && (
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${classificationColors[prov.classification] || 'bg-slate-100 text-slate-600'}`}>
+                      {t(`pr.${prov.classification}`)}
                     </span>
                   )}
                 </div>
@@ -164,36 +220,51 @@ export default function VersionComparePage() {
 
               {expandedProvision === prov.provision_id && (
                 <div className="border-t p-4 space-y-4">
-                  {prov.versions.map((ver, idx) => (
-                    <div key={ver.snapshot_id} className="border rounded-lg p-3">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <span className="font-bold text-sm text-slate-800">
-                          {t('pr.version')} {ver.version}
-                        </span>
-                        <span className="text-xs text-slate-400">
-                          {new Date(ver.snapshot_at).toLocaleString()}
-                        </span>
-                        {ver.provision_type && (
-                          <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">
-                            {ver.provision_type}
+                  {prov.versions.length === 0 ? (
+                    <div className="text-center py-4 text-sm text-slate-400">{t('common.loading')}</div>
+                  ) : (
+                    prov.versions.map((ver, idx) => (
+                      <div key={ver.snapshot_id} className="border rounded-lg p-3">
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          <span className="font-bold text-sm text-slate-800">
+                            {t('pr.version')} {ver.version}
                           </span>
+                          <span className="text-xs text-slate-400">
+                            {new Date(ver.snapshot_at).toLocaleString()}
+                          </span>
+                          {ver.provision_type && (
+                            <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">
+                              {ver.provision_type}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-slate-700 whitespace-pre-wrap bg-slate-50 rounded p-3 max-h-40 overflow-y-auto">
+                          {language === 'ar' && ver.text_ar ? ver.text_ar : ver.text}
+                        </div>
+                        {idx > 0 && ver.diff_from_previous && (
+                          <details className="mt-2">
+                            <summary className="text-xs text-blue-600 cursor-pointer hover:underline">
+                              {t('pr.diff')}
+                            </summary>
+                            <pre className="text-xs bg-slate-900 text-green-400 rounded p-3 mt-1 overflow-x-auto max-h-40">
+                              {ver.diff_from_previous}
+                            </pre>
+                          </details>
                         )}
                       </div>
-                      <div className="text-sm text-slate-700 whitespace-pre-wrap bg-slate-50 rounded p-3 max-h-40 overflow-y-auto">
-                        {language === 'ar' && ver.text_ar ? ver.text_ar : ver.text}
-                      </div>
-                      {idx > 0 && ver.diff_from_previous && (
-                        <details className="mt-2">
-                          <summary className="text-xs text-blue-600 cursor-pointer hover:underline">
-                            {t('pr.diff')}
-                          </summary>
-                          <pre className="text-xs bg-slate-900 text-green-400 rounded p-3 mt-1 overflow-x-auto max-h-40">
-                            {ver.diff_from_previous}
-                          </pre>
-                        </details>
-                      )}
-                    </div>
-                  ))}
+                    ))
+                  )}
+                  {/* Show inline diff from document-level comparison */}
+                  {prov.diff_en && (
+                    <details className="mt-2">
+                      <summary className="text-xs text-blue-600 cursor-pointer hover:underline">
+                        {t('pr.diff')} (latest)
+                      </summary>
+                      <pre className="text-xs bg-slate-900 text-green-400 rounded p-3 mt-1 overflow-x-auto max-h-40">
+                        {prov.diff_en}
+                      </pre>
+                    </details>
+                  )}
                 </div>
               )}
             </div>
