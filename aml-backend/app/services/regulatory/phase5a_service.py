@@ -1126,12 +1126,14 @@ class EvidenceExpiryAlertService:
             return None
 
         old_expires = str(ev.expires_at) if ev.expires_at else None
+
+        # Normalize timezone before storing
+        if new_expires_at.tzinfo is None:
+            new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
         ev.expires_at = new_expires_at
 
         # If it was expired, set status back to active
         now = datetime.now(timezone.utc)
-        if new_expires_at.tzinfo is None:
-            new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
         if new_expires_at > now and ev.status == "expired":
             ev.status = "active"
 
