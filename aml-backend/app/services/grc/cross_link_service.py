@@ -14,7 +14,7 @@ from app.models.grc.enterprise_risk import EnterpriseRisk
 from app.models.grc.issue import Issue, RemediationAction
 from app.models.grc.audit import AuditFinding, AuditEngagement, ControlTest
 from app.models.grc.action import GRCAction, ActionSourceType, ActionStatus
-from app.models.regulatory.obligation import Obligation, Control, EvidenceArtifact
+from app.models.regulatory.obligation import Obligation, Control, EvidenceArtifact, ObligationControl
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ async def _link_from_risk(db: AsyncSession, risk_id: str, links: dict):
         obl_result = await db.execute(select(Obligation).where(Obligation.id == risk.obligation_id))
         obl = obl_result.scalars().first()
         if obl:
-            links["obligations"].append({"id": obl.id, "title": obl.title or obl.obligation_text[:80]})
+            links["obligations"].append({"id": obl.id, "title": obl.normalized_summary or obl.text[:80]})
 
 
 async def _link_from_issue(db: AsyncSession, issue_id: str, links: dict):
@@ -156,7 +156,7 @@ async def _link_from_finding(db: AsyncSession, finding_id: str, links: dict):
             ctrl_result = await db.execute(select(Control).where(Control.id == cid))
             ctrl = ctrl_result.scalars().first()
             if ctrl:
-                links["controls"].append({"id": ctrl.id, "title": ctrl.title})
+                links["controls"].append({"id": ctrl.id, "title": ctrl.name})
 
     # Finding → Obligations
     if finding.obligation_ids:
@@ -164,7 +164,7 @@ async def _link_from_finding(db: AsyncSession, finding_id: str, links: dict):
             obl_result = await db.execute(select(Obligation).where(Obligation.id == oid))
             obl = obl_result.scalars().first()
             if obl:
-                links["obligations"].append({"id": obl.id, "title": obl.title or obl.obligation_text[:80]})
+                links["obligations"].append({"id": obl.id, "title": obl.normalized_summary or obl.text[:80]})
 
     # Finding → Actions
     actions = await db.execute(
@@ -183,18 +183,23 @@ async def _link_from_obligation(db: AsyncSession, obligation_id: str, links: dic
     obl = result.scalars().first()
     if not obl:
         return
-    links["entity_title"] = obl.title or (obl.obligation_text[:80] if obl.obligation_text else obligation_id)
+    links["entity_title"] = obl.normalized_summary or (obl.text[:80] if obl.text else obligation_id)
 
-    # Obligation → Controls
-    controls = await db.execute(select(Control).where(Control.obligation_id == obligation_id))
-    for ctrl in controls.scalars().all():
-        links["controls"].append({"id": ctrl.id, "title": ctrl.title})
+    # Obligation → Controls (via ObligationControl junction)
+    oc_results = await db.execute(
+        select(ObligationControl).where(ObligationControl.obligation_id == obligation_id)
+    )
+    for oc in oc_results.scalars().all():
+        ctrl_result = await db.execute(select(Control).where(Control.id == oc.control_id))
+        ctrl = ctrl_result.scalars().first()
+        if ctrl:
+            links["controls"].append({"id": ctrl.id, "title": ctrl.name})
 
     # Obligation → Evidence (via controls)
     for ctrl_link in links["controls"]:
         evidence = await db.execute(select(EvidenceArtifact).where(EvidenceArtifact.control_id == ctrl_link["id"]))
         for ev in evidence.scalars().all():
-            links["evidence"].append({"id": ev.id, "title": ev.title})
+            links["evidence"].append({"id": ev.id, "title": ev.name})
 
     # Obligation → Actions
     actions = await db.execute(
@@ -213,19 +218,22 @@ async def _link_from_control(db: AsyncSession, control_id: str, links: dict):
     ctrl = result.scalars().first()
     if not ctrl:
         return
-    links["entity_title"] = ctrl.title
+    links["entity_title"] = ctrl.name
 
-    # Control → Obligation
-    if ctrl.obligation_id:
-        obl_result = await db.execute(select(Obligation).where(Obligation.id == ctrl.obligation_id))
+    # Control → Obligations (via ObligationControl junction)
+    oc_results = await db.execute(
+        select(ObligationControl).where(ObligationControl.control_id == control_id)
+    )
+    for oc in oc_results.scalars().all():
+        obl_result = await db.execute(select(Obligation).where(Obligation.id == oc.obligation_id))
         obl = obl_result.scalars().first()
         if obl:
-            links["obligations"].append({"id": obl.id, "title": obl.title or obl.obligation_text[:80]})
+            links["obligations"].append({"id": obl.id, "title": obl.normalized_summary or obl.text[:80]})
 
     # Control → Evidence
     evidence = await db.execute(select(EvidenceArtifact).where(EvidenceArtifact.control_id == control_id))
     for ev in evidence.scalars().all():
-        links["evidence"].append({"id": ev.id, "title": ev.title})
+        links["evidence"].append({"id": ev.id, "title": ev.name})
 
     # Control → Actions
     actions = await db.execute(
@@ -244,14 +252,14 @@ async def _link_from_evidence(db: AsyncSession, evidence_id: str, links: dict):
     ev = result.scalars().first()
     if not ev:
         return
-    links["entity_title"] = ev.title
+    links["entity_title"] = ev.name
 
     # Evidence → Control
     if ev.control_id:
         ctrl_result = await db.execute(select(Control).where(Control.id == ev.control_id))
         ctrl = ctrl_result.scalars().first()
         if ctrl:
-            links["controls"].append({"id": ctrl.id, "title": ctrl.title})
+            links["controls"].append({"id": ctrl.id, "title": ctrl.name})
 
     # Evidence → Actions
     actions = await db.execute(
@@ -293,17 +301,17 @@ async def _link_from_action(db: AsyncSession, action_id: str, links: dict):
             r = await db.execute(select(Obligation).where(Obligation.id == action.source_id))
             obl = r.scalars().first()
             if obl:
-                links["obligations"].append({"id": obl.id, "title": obl.title or obl.obligation_text[:80]})
+                links["obligations"].append({"id": obl.id, "title": obl.normalized_summary or obl.text[:80]})
         elif action.source_type == ActionSourceType.CONTROL:
             r = await db.execute(select(Control).where(Control.id == action.source_id))
             ctrl = r.scalars().first()
             if ctrl:
-                links["controls"].append({"id": ctrl.id, "title": ctrl.title})
+                links["controls"].append({"id": ctrl.id, "title": ctrl.name})
         elif action.source_type == ActionSourceType.EVIDENCE:
             r = await db.execute(select(EvidenceArtifact).where(EvidenceArtifact.id == action.source_id))
             ev = r.scalars().first()
             if ev:
-                links["evidence"].append({"id": ev.id, "title": ev.title})
+                links["evidence"].append({"id": ev.id, "title": ev.name})
 
     # Action → Linked entities
     if action.linked_risk_ids:

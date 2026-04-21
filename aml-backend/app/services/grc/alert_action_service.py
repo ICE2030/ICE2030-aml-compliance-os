@@ -23,7 +23,7 @@ from app.models.grc.audit import (
     ControlTest, TestResult,
 )
 from app.models.regulatory.obligation import (
-    Obligation, Control, EvidenceArtifact, RegulatoryRisk,
+    Obligation, Control, EvidenceArtifact, RegulatoryRisk, ObligationControl,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,8 +43,8 @@ class AlertActionService:
             threshold = now + timedelta(days=30)
             expiring = await db.execute(
                 select(EvidenceArtifact).where(
-                    EvidenceArtifact.expiry_date <= threshold,
-                    EvidenceArtifact.expiry_date >= now,
+                    EvidenceArtifact.expires_at <= threshold,
+                    EvidenceArtifact.expires_at >= now,
                 )
             )
             for ev in expiring.scalars().all():
@@ -58,18 +58,18 @@ class AlertActionService:
                 if (existing.scalar() or 0) == 0:
                     action = GRCAction(
                         id=generate_uuid(),
-                        title=f"Renew expiring evidence: {ev.title or ev.id}",
-                        title_ar=f"تجديد الأدلة المنتهية: {ev.title or ev.id}",
-                        description=f"Evidence artifact '{ev.title}' expires on {ev.expiry_date.strftime('%Y-%m-%d') if ev.expiry_date else 'N/A'}. Renew or replace before expiry.",
+                        title=f"Renew expiring evidence: {ev.name or ev.id}",
+                        title_ar=f"تجديد الأدلة المنتهية: {ev.name or ev.id}",
+                        description=f"Evidence artifact '{ev.name}' expires on {ev.expires_at.strftime('%Y-%m-%d') if ev.expires_at else 'N/A'}. Renew or replace before expiry.",
                         reason="Evidence expiry detected — compliance gap risk if not renewed.",
                         reason_ar="تم اكتشاف انتهاء صلاحية الأدلة — خطر فجوة الامتثال إذا لم يتم التجديد.",
                         source_type=ActionSourceType.EVIDENCE,
                         source_id=ev.id,
-                        source_title=ev.title,
+                        source_title=ev.name,
                         origin=ActionOrigin.ALERT_GENERATED,
                         priority=ActionPriority.HIGH,
                         status=ActionStatus.OPEN,
-                        due_date=ev.expiry_date,
+                        due_date=ev.expires_at,
                     )
                     db.add(action)
                     generated.append({"type": "evidence_expiry", "title": action.title, "source_id": ev.id})
@@ -159,14 +159,14 @@ class AlertActionService:
         try:
             high_risk_obls = await db.execute(
                 select(RegulatoryRisk).where(
-                    RegulatoryRisk.overall_risk_score >= 0.7
+                    RegulatoryRisk.risk_score >= 0.7
                 )
             )
             for rr in high_risk_obls.scalars().all():
-                # Check if obligation has any controls
+                # Check if obligation has any controls (via ObligationControl junction)
                 control_count = (await db.execute(
-                    select(sqla_func.count()).select_from(Control).where(
-                        Control.obligation_id == rr.obligation_id
+                    select(sqla_func.count()).select_from(ObligationControl).where(
+                        ObligationControl.obligation_id == rr.obligation_id
                     )
                 )).scalar() or 0
                 if control_count == 0:
@@ -183,7 +183,7 @@ class AlertActionService:
                             id=generate_uuid(),
                             title=f"Map controls to high-risk obligation: {rr.obligation_id[:20]}...",
                             title_ar=f"ربط ضوابط بالالتزام عالي المخاطر: {rr.obligation_id[:20]}...",
-                            description=f"Obligation {rr.obligation_id} has risk score {rr.overall_risk_score:.2f} but no mapped controls.",
+                            description=f"Obligation {rr.obligation_id} has risk score {rr.risk_score:.2f} but no mapped controls.",
                             reason="High-risk obligation with no controls — compliance gap.",
                             reason_ar="التزام عالي المخاطر بدون ضوابط — فجوة امتثال.",
                             source_type=ActionSourceType.OBLIGATION,
