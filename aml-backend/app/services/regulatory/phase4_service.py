@@ -431,7 +431,7 @@ _OBLIGATION_TYPE_CRITICALITY = {
     "threshold": "medium", "identification": "medium", "verification": "medium",
     "ongoing_monitoring": "medium", "recordkeeping": "medium",
     "governance": "medium", "deadline": "medium",
-    "penalty": "low", "definition": "low", "guidance": "low",
+    "penalty": "critical", "definition": "low", "guidance": "low",
 }
 _SEVERITY_MAP = [
     (0.0, 0.25, "low", "unlikely"),
