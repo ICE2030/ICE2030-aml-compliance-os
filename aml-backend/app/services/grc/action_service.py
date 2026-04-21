@@ -2,7 +2,7 @@
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy import select, func as sqla_func
+from sqlalchemy import select, case, func as sqla_func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.base import generate_uuid
 from app.models.grc.action import (
@@ -231,11 +231,18 @@ class ActionService:
         now = datetime.now(timezone.utc)
 
         # Priority order: overdue critical > overdue high > open critical > open high
+        priority_order = case(
+            (GRCAction.priority == ActionPriority.CRITICAL, 1),
+            (GRCAction.priority == ActionPriority.HIGH, 2),
+            (GRCAction.priority == ActionPriority.MEDIUM, 3),
+            (GRCAction.priority == ActionPriority.LOW, 4),
+            else_=5,
+        )
         stmt = (
             select(GRCAction)
             .where(GRCAction.status.in_([ActionStatus.OPEN, ActionStatus.IN_PROGRESS]))
             .order_by(
-                GRCAction.priority.asc(),  # critical < high < medium < low (enum ordering)
+                priority_order,
                 GRCAction.due_date.asc().nulls_last(),
                 GRCAction.created_at.asc(),
             )

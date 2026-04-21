@@ -11,7 +11,7 @@ obligations, controls, evidence, and audit data to produce a decision-oriented s
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from sqlalchemy import select, func as sqla_func
+from sqlalchemy import select, case, func as sqla_func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.grc.enterprise_risk import (
     EnterpriseRisk, RiskCategoryEnum, RiskStatus, TrendDirection,
@@ -434,12 +434,19 @@ async def _get_action_center_summary(db: AsyncSession) -> dict:
         for row in src_result.all()
     }
 
-    # Top 3 actions
+    # Top 3 actions — use CASE for correct priority ordering
+    priority_order = case(
+        (GRCAction.priority == ActionPriority.CRITICAL, 1),
+        (GRCAction.priority == ActionPriority.HIGH, 2),
+        (GRCAction.priority == ActionPriority.MEDIUM, 3),
+        (GRCAction.priority == ActionPriority.LOW, 4),
+        else_=5,
+    )
     top_stmt = (
         select(GRCAction)
         .where(GRCAction.status.in_([ActionStatus.OPEN, ActionStatus.IN_PROGRESS]))
         .order_by(
-            GRCAction.priority.asc(),
+            priority_order,
             GRCAction.due_date.asc().nulls_last(),
             GRCAction.created_at.asc(),
         )
