@@ -7,7 +7,7 @@ import {
   Search, ClipboardCheck, Brain, ShieldCheck, FileCheck, Target, PieChart,
   Lightbulb, Bell, TrendingUp, SearchCode, GitCompare, BellRing, Activity, Layers,
   Gauge, ShieldAlert, AlertOctagon, Wrench, ClipboardList, Search as SearchIcon, CheckCircle, AlertTriangle as AlertTriangleIcon2,
-  Zap, FileText as FileTextIcon2,
+  Zap, FileText as FileTextIcon2, Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -47,6 +47,7 @@ const navItems = [
   { key: 'nav.audit_findings', path: '/grc/audit-findings', icon: AlertTriangleIcon2 },
   { key: 'nav.action_center', path: '/grc/actions', icon: Zap },
   { key: 'nav.narratives', path: '/grc/narratives', icon: FileTextIcon2 },
+  { key: 'nav.admin', path: '/grc/admin', icon: Settings },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

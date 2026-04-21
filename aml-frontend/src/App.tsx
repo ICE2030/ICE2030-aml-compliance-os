@@ -37,6 +37,7 @@ import ControlTestPage from '@/pages/grc/ControlTestPage';
 import AuditFindingPage from '@/pages/grc/AuditFindingPage';
 import ActionCenterPage from '@/pages/grc/ActionCenterPage';
 import NarrativePage from '@/pages/grc/NarrativePage';
+import AdminPage from '@/pages/grc/AdminPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -295,6 +296,13 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <NarrativePage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/admin" element={
+        <ProtectedRoute>
+          <Layout>
+            <AdminPage />
           </Layout>
         </ProtectedRoute>
       } />

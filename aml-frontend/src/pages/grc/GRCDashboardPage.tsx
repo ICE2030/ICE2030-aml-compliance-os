@@ -54,17 +54,29 @@ export default function GRCDashboardPage() {
   const { t, language } = useLanguage();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     fetch(`${API}/api/grc/dashboard`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`Dashboard API returned ${r.status}`);
+        return r.json();
+      })
       .then(setData)
-      .catch(() => {})
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load dashboard'))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>;
+
+  if (error) return (
+    <div className="text-center py-12">
+      <AlertTriangle size={32} className="mx-auto mb-2 text-red-400" />
+      <p className="text-red-600 font-medium">{language === 'ar' ? 'خطأ في تحميل لوحة المعلومات' : 'Failed to load dashboard'}</p>
+      <p className="text-sm text-slate-500 mt-1">{error}</p>
+    </div>
+  );
 
   if (!data) return <div className="text-center py-12 text-slate-500">{t('common.no_data')}</div>;
 

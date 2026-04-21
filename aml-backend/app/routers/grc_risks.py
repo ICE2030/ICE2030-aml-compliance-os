@@ -3,17 +3,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
-from app.core.auth import get_current_user
-from app.models.user import User
+from app.core.auth import get_current_user, require_roles
+from app.models.user import User, UserRole
 from app.services.grc.enterprise_risk_service import EnterpriseRiskService, RiskCategoryService
+from app.services.grc.grc_audit_service import GRCAuditService
 
 router = APIRouter(prefix="/api/grc/risks", tags=["GRC - Enterprise Risk"])
 
 
 @router.post("")
-async def create_risk(data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def create_risk(data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER, UserRole.ANALYST))):
     """Create a new enterprise risk."""
     result = await EnterpriseRiskService.create_risk(db, data)
+    await GRCAuditService.log_change(db, "create", "enterprise_risk", result["id"], user_id=current_user.id, new_values=data, summary=f"Created risk: {data.get('title', '')}", summary_ar=f"إنشاء مخاطر: {data.get('title_ar', '')}")
     await db.commit()
     return result
 
@@ -74,21 +76,25 @@ async def get_risk(risk_id: str, db: AsyncSession = Depends(get_db), current_use
 
 
 @router.put("/{risk_id}")
-async def update_risk(risk_id: str, data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def update_risk(risk_id: str, data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER, UserRole.ANALYST))):
     """Update an enterprise risk."""
+    prev = await EnterpriseRiskService.get_risk(db, risk_id)
     result = await EnterpriseRiskService.update_risk(db, risk_id, data)
     if isinstance(result, dict) and "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
+    await GRCAuditService.log_change(db, "update", "enterprise_risk", risk_id, user_id=current_user.id, prev_values=prev, new_values=data, summary=f"Updated risk: {risk_id}")
     await db.commit()
     return result
 
 
 @router.delete("/{risk_id}")
-async def delete_risk(risk_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def delete_risk(risk_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER))):
     """Delete an enterprise risk."""
+    prev = await EnterpriseRiskService.get_risk(db, risk_id)
     result = await EnterpriseRiskService.delete_risk(db, risk_id)
     if isinstance(result, dict) and "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
+    await GRCAuditService.log_change(db, "delete", "enterprise_risk", risk_id, user_id=current_user.id, prev_values=prev, summary=f"Deleted risk: {risk_id}")
     await db.commit()
     return result
 

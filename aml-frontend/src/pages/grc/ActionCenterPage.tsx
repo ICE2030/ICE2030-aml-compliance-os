@@ -50,6 +50,7 @@ export default function ActionCenterPage() {
   const [actions, setActions] = useState<GRCAction[]>([]);
   const [summary, setSummary] = useState<ActionSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
@@ -66,20 +67,21 @@ export default function ActionCenterPage() {
 
   const fetchActions = () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams();
     if (filterStatus) params.set('status', filterStatus);
     if (filterPriority) params.set('priority', filterPriority);
     if (filterSource) params.set('source_type', filterSource);
     fetch(`${API}/api/grc/actions?${params}`, { headers })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(`API ${r.status}`); return r.json(); })
       .then(data => setActions(data.items || []))
-      .catch(() => {})
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load actions'))
       .finally(() => setLoading(false));
   };
 
   const fetchSummary = () => {
     fetch(`${API}/api/grc/actions/summary`, { headers })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(`API ${r.status}`); return r.json(); })
       .then(setSummary)
       .catch(() => {});
   };
@@ -87,47 +89,63 @@ export default function ActionCenterPage() {
   useEffect(() => { fetchActions(); fetchSummary(); }, [filterStatus, filterPriority, filterSource]);
 
   const handleCreate = async () => {
-    const body: Record<string, unknown> = { ...form, origin: 'manual' };
-    if (!body.due_date) delete body.due_date;
-    const res = await fetch(`${API}/api/grc/actions`, { method: 'POST', headers, body: JSON.stringify(body) });
-    if (res.ok) {
+    try {
+      const body: Record<string, unknown> = { ...form, origin: 'manual' };
+      if (!body.due_date) delete body.due_date;
+      const res = await fetch(`${API}/api/grc/actions`, { method: 'POST', headers, body: JSON.stringify(body) });
+      if (!res.ok) { setError(`Failed to create action: ${res.status}`); return; }
       setShowCreate(false);
       setForm({ title: '', title_ar: '', description: '', description_ar: '', reason: '', reason_ar: '', priority: 'medium', source_type: 'manual', owner: '', due_date: '' });
       fetchActions();
       fetchSummary();
-    }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create action'); }
   };
 
   const handleComplete = async (id: string) => {
-    await fetch(`${API}/api/grc/actions/${id}`, {
-      method: 'PUT', headers, body: JSON.stringify({ status: 'completed' }),
-    });
-    fetchActions();
-    fetchSummary();
+    try {
+      const res = await fetch(`${API}/api/grc/actions/${id}`, {
+        method: 'PUT', headers, body: JSON.stringify({ status: 'completed' }),
+      });
+      if (!res.ok) { setError(`Failed to complete action: ${res.status}`); return; }
+      fetchActions();
+      fetchSummary();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to complete action'); }
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`${API}/api/grc/actions/${id}`, { method: 'DELETE', headers });
-    fetchActions();
-    fetchSummary();
+    try {
+      const res = await fetch(`${API}/api/grc/actions/${id}`, { method: 'DELETE', headers });
+      if (!res.ok) { setError(`Failed to delete action: ${res.status}`); return; }
+      fetchActions();
+      fetchSummary();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to delete action'); }
   };
 
   const handleScanAlerts = async () => {
-    await fetch(`${API}/api/grc/actions/scan-alerts`, { method: 'POST', headers });
-    fetchActions();
-    fetchSummary();
+    try {
+      const res = await fetch(`${API}/api/grc/actions/scan-alerts`, { method: 'POST', headers });
+      if (!res.ok) { setError(`Failed to scan alerts: ${res.status}`); return; }
+      fetchActions();
+      fetchSummary();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to scan alerts'); }
   };
 
   const handleScanPatterns = async () => {
-    await fetch(`${API}/api/grc/actions/scan-patterns`, { method: 'POST', headers });
-    fetchActions();
-    fetchSummary();
+    try {
+      const res = await fetch(`${API}/api/grc/actions/scan-patterns`, { method: 'POST', headers });
+      if (!res.ok) { setError(`Failed to scan patterns: ${res.status}`); return; }
+      fetchActions();
+      fetchSummary();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to scan patterns'); }
   };
 
   const handleApprove = async (id: string) => {
-    await fetch(`${API}/api/grc/actions/${id}/approve`, { method: 'POST', headers });
-    fetchActions();
-    fetchSummary();
+    try {
+      const res = await fetch(`${API}/api/grc/actions/${id}/approve`, { method: 'POST', headers });
+      if (!res.ok) { setError(`Failed to approve action: ${res.status}`); return; }
+      fetchActions();
+      fetchSummary();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to approve action'); }
   };
 
   const fetchCrossLinks = async (action: GRCAction) => {
@@ -201,6 +219,17 @@ export default function ActionCenterPage() {
           </Button>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-red-500" />
+            <span className="text-sm text-red-700">{error}</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}><X size={14} /></Button>
+        </div>
+      )}
 
       {/* Summary Cards */}
       {summary && (

@@ -3,17 +3,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
-from app.core.auth import get_current_user
-from app.models.user import User
+from app.core.auth import get_current_user, require_roles
+from app.models.user import User, UserRole
 from app.services.grc.issue_management_service import IssueManagementService
+from app.services.grc.grc_audit_service import GRCAuditService
 
 router = APIRouter(prefix="/api/grc/issues", tags=["GRC - Issue Management"])
 
 
 @router.post("")
-async def create_issue(data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def create_issue(data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER, UserRole.ANALYST))):
     """Create a new issue."""
     result = await IssueManagementService.create_issue(db, data)
+    await GRCAuditService.log_change(db, "create", "issue", result["id"], user_id=current_user.id, new_values=data, summary=f"Created issue: {data.get('title', '')}")
     await db.commit()
     return result
 
@@ -55,20 +57,24 @@ async def get_issue(issue_id: str, db: AsyncSession = Depends(get_db), current_u
 
 
 @router.put("/{issue_id}")
-async def update_issue(issue_id: str, data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def update_issue(issue_id: str, data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER, UserRole.ANALYST))):
     """Update an issue."""
+    prev = await IssueManagementService.get_issue(db, issue_id)
     result = await IssueManagementService.update_issue(db, issue_id, data)
     if isinstance(result, dict) and "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
+    await GRCAuditService.log_change(db, "update", "issue", issue_id, user_id=current_user.id, prev_values=prev, new_values=data, summary=f"Updated issue: {issue_id}")
     await db.commit()
     return result
 
 
 @router.delete("/{issue_id}")
-async def delete_issue(issue_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def delete_issue(issue_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER))):
     """Delete an issue."""
+    prev = await IssueManagementService.get_issue(db, issue_id)
     result = await IssueManagementService.delete_issue(db, issue_id)
     if isinstance(result, dict) and "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
+    await GRCAuditService.log_change(db, "delete", "issue", issue_id, user_id=current_user.id, prev_values=prev, summary=f"Deleted issue: {issue_id}")
     await db.commit()
     return result

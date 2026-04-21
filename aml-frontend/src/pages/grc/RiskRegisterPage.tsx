@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
-  Shield, Plus, TrendingUp, TrendingDown, Minus, Sparkles, X,
+  Shield, Plus, TrendingUp, TrendingDown, Minus, Sparkles, X, AlertTriangle,
 } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -42,6 +42,7 @@ export default function RiskRegisterPage() {
   const [risks, setRisks] = useState<Risk[]>([]);
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [filterCat, setFilterCat] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -57,33 +58,38 @@ export default function RiskRegisterPage() {
 
   const fetchData = () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams();
     if (filterCat) params.set('category', filterCat);
     if (filterStatus) params.set('status', filterStatus);
 
     Promise.all([
-      fetch(`${API}/api/grc/risks?${params}`, { headers }).then(r => r.json()),
-      fetch(`${API}/api/grc/risks/summary`, { headers }).then(r => r.json()),
+      fetch(`${API}/api/grc/risks?${params}`, { headers }).then(r => { if (!r.ok) throw new Error(`API ${r.status}`); return r.json(); }),
+      fetch(`${API}/api/grc/risks/summary`, { headers }).then(r => { if (!r.ok) throw new Error(`API ${r.status}`); return r.json(); }),
     ]).then(([risksData, summaryData]) => {
       setRisks(risksData.items || []);
       setSummary(summaryData);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch((e) => setError(e instanceof Error ? e.message : 'Failed to load risks')).finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchData(); }, [filterCat, filterStatus]);
 
   const handleCreate = async () => {
-    const res = await fetch(`${API}/api/grc/risks`, { method: 'POST', headers, body: JSON.stringify(form) });
-    if (res.ok) {
+    try {
+      const res = await fetch(`${API}/api/grc/risks`, { method: 'POST', headers, body: JSON.stringify(form) });
+      if (!res.ok) { setError(`Failed to create risk: ${res.status}`); return; }
       setShowCreate(false);
       setForm({ title: '', title_ar: '', description: '', description_ar: '', category: 'operational', inherent_likelihood: 'possible', inherent_impact: 'moderate', residual_likelihood: 'possible', residual_impact: 'moderate', treatment_strategy: 'mitigate', owner: '', business_unit: '', root_cause: '' });
       fetchData();
-    }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create risk'); }
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`${API}/api/grc/risks/${id}`, { method: 'DELETE', headers });
-    fetchData();
+    try {
+      const res = await fetch(`${API}/api/grc/risks/${id}`, { method: 'DELETE', headers });
+      if (!res.ok) { setError(`Failed to delete risk: ${res.status}`); return; }
+      fetchData();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to delete risk'); }
   };
 
   const scoreColor = (score: number) => {
@@ -118,6 +124,17 @@ export default function RiskRegisterPage() {
           {showCreate ? (language === 'ar' ? 'إلغاء' : 'Cancel') : (language === 'ar' ? 'إضافة مخاطرة' : 'Add Risk')}
         </Button>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-red-500" />
+            <span className="text-sm text-red-700">{error}</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}><X size={14} /></Button>
+        </div>
+      )}
 
       {/* Summary Cards */}
       {summary && (

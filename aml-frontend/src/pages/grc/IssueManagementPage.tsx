@@ -33,6 +33,7 @@ export default function IssueManagementPage() {
   const [issues, setIssues] = useState<GRCIssue[]>([]);
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [filterSource, setFilterSource] = useState('');
   const [filterSeverity, setFilterSeverity] = useState('');
@@ -47,41 +48,49 @@ export default function IssueManagementPage() {
 
   const fetchData = () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams();
     if (filterSource) params.set('source', filterSource);
     if (filterSeverity) params.set('severity', filterSeverity);
     if (filterStatus) params.set('status', filterStatus);
 
     Promise.all([
-      fetch(`${API}/api/grc/issues?${params}`, { headers }).then(r => r.json()),
-      fetch(`${API}/api/grc/issues/summary`, { headers }).then(r => r.json()),
+      fetch(`${API}/api/grc/issues?${params}`, { headers }).then(r => { if (!r.ok) throw new Error(`API ${r.status}`); return r.json(); }),
+      fetch(`${API}/api/grc/issues/summary`, { headers }).then(r => { if (!r.ok) throw new Error(`API ${r.status}`); return r.json(); }),
     ]).then(([issuesData, summaryData]) => {
       setIssues(issuesData.items || []);
       setSummary(summaryData);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch((e) => setError(e instanceof Error ? e.message : 'Failed to load issues')).finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchData(); }, [filterSource, filterSeverity, filterStatus]);
 
   const handleCreate = async () => {
-    const body: Record<string, unknown> = { ...form };
-    if (!body.due_date) delete body.due_date;
-    const res = await fetch(`${API}/api/grc/issues`, { method: 'POST', headers, body: JSON.stringify(body) });
-    if (res.ok) {
+    try {
+      const body: Record<string, unknown> = { ...form };
+      if (!body.due_date) delete body.due_date;
+      const res = await fetch(`${API}/api/grc/issues`, { method: 'POST', headers, body: JSON.stringify(body) });
+      if (!res.ok) { setError(`Failed to create issue: ${res.status}`); return; }
       setShowCreate(false);
       setForm({ title: '', title_ar: '', description: '', description_ar: '', source: 'compliance', severity: 'medium', owner: '', due_date: '' });
       fetchData();
-    }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to create issue'); }
   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
-    await fetch(`${API}/api/grc/issues/${id}`, { method: 'PUT', headers, body: JSON.stringify({ status: newStatus }) });
-    fetchData();
+    try {
+      const res = await fetch(`${API}/api/grc/issues/${id}`, { method: 'PUT', headers, body: JSON.stringify({ status: newStatus }) });
+      if (!res.ok) { setError(`Failed to update issue: ${res.status}`); return; }
+      fetchData();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to update issue'); }
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`${API}/api/grc/issues/${id}`, { method: 'DELETE', headers });
-    fetchData();
+    try {
+      const res = await fetch(`${API}/api/grc/issues/${id}`, { method: 'DELETE', headers });
+      if (!res.ok) { setError(`Failed to delete issue: ${res.status}`); return; }
+      fetchData();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Failed to delete issue'); }
   };
 
   const severityColor = (s: string) => {
@@ -118,6 +127,17 @@ export default function IssueManagementPage() {
           {showCreate ? (language === 'ar' ? 'إلغاء' : 'Cancel') : (language === 'ar' ? 'إضافة مشكلة' : 'Add Issue')}
         </Button>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-red-500" />
+            <span className="text-sm text-red-700">{error}</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}><X size={14} /></Button>
+        </div>
+      )}
 
       {/* Summary */}
       {summary && (
