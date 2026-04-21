@@ -10,6 +10,16 @@ interface DocumentOption {
   title_ar?: string;
 }
 
+interface DiffFromPrevious {
+  diff_en?: string;
+  diff_ar?: string;
+  previous_version?: number;
+  text_changed?: boolean;
+  text_ar_changed?: boolean;
+  title_changed?: boolean;
+  type_changed?: boolean;
+}
+
 interface ProvisionVersion {
   version: number;
   snapshot_id: string;
@@ -21,7 +31,7 @@ interface ProvisionVersion {
   title_ar?: string;
   section_number?: string;
   provision_type?: string;
-  diff_from_previous?: string;
+  diff_from_previous?: DiffFromPrevious | null;
 }
 
 interface ProvisionComparison {
@@ -247,7 +257,9 @@ export default function VersionComparePage() {
                               {t('pr.diff')}
                             </summary>
                             <pre className="text-xs bg-slate-900 text-green-400 rounded p-3 mt-1 overflow-x-auto max-h-40">
-                              {ver.diff_from_previous}
+                              {language === 'ar' && ver.diff_from_previous.diff_ar
+                                ? ver.diff_from_previous.diff_ar
+                                : ver.diff_from_previous.diff_en || ''}
                             </pre>
                           </details>
                         )}
