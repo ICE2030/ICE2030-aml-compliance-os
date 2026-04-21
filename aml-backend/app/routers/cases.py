@@ -223,6 +223,11 @@ async def decide_case(
             db.add(fallback_interaction)
             await db.flush()
         except Exception as e2:
+            await db.rollback()
+            result = await db.execute(select(Case).where(Case.id == case_id))
+            case = result.scalar_one_or_none()
+            if not case:
+                raise HTTPException(status_code=404, detail="Case not found after rollback")
             logger.warning(f"Failed to create fallback Interaction for case {case_id}: {e2}")
 
     # Now update case fields (after capture_decision read the original values)
