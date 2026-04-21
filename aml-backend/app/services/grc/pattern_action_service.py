@@ -29,14 +29,16 @@ class PatternActionService:
 
         # Import pattern models dynamically to avoid circular imports
         try:
-            from app.models.intelligence import IntegratedPattern
+            from app.models.compliance_snapshot import CompliancePattern
         except ImportError:
             return {"scanned_at": now.isoformat(), "actions_generated": 0, "details": [], "note": "Pattern model not available"}
 
         # Get recent unactioned patterns
         try:
             patterns = await db.execute(
-                select(IntegratedPattern).order_by(IntegratedPattern.created_at.desc()).limit(50)
+                select(CompliancePattern).where(
+                    CompliancePattern.is_active == True
+                ).order_by(CompliancePattern.created_at.desc()).limit(50)
             )
             for pattern in patterns.scalars().all():
                 # Check if action already exists for this pattern
