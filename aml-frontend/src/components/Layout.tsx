@@ -6,7 +6,7 @@ import {
   Briefcase, FileText, BarChart3, LogOut, Globe, ChevronLeft, ChevronRight, Menu, BookOpen,
   Search, ClipboardCheck, Brain, ShieldCheck, FileCheck, Target, PieChart,
   Lightbulb, Bell, TrendingUp, SearchCode, GitCompare, BellRing, Activity, Layers,
-  Gauge, ShieldAlert, AlertOctagon, Wrench,
+  Gauge, ShieldAlert, AlertOctagon, Wrench, ClipboardList, Search as SearchIcon, CheckCircle, AlertTriangle as AlertTriangleIcon2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -40,6 +40,10 @@ const navItems = [
   { key: 'nav.risk_register', path: '/grc/risks', icon: ShieldAlert },
   { key: 'nav.issue_management', path: '/grc/issues', icon: AlertOctagon },
   { key: 'nav.remediation', path: '/grc/remediation', icon: Wrench },
+  { key: 'nav.audit_plans', path: '/grc/audit-plans', icon: ClipboardList },
+  { key: 'nav.audit_engagements', path: '/grc/audit-engagements', icon: SearchIcon },
+  { key: 'nav.control_tests', path: '/grc/control-tests', icon: CheckCircle },
+  { key: 'nav.audit_findings', path: '/grc/audit-findings', icon: AlertTriangleIcon2 },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

@@ -530,6 +530,10 @@ export const translations: Record<Language, Record<string, string>> = {
     'nav.risk_register': 'Risk Register',
     'nav.issue_management': 'Issue Management',
     'nav.remediation': 'Remediation',
+    'nav.audit_plans': 'Audit Plans',
+    'nav.audit_engagements': 'Audit Engagements',
+    'nav.control_tests': 'Control Tests',
+    'nav.audit_findings': 'Audit Findings',
   },
   ar: {
     'app.title': 'نظام حوكمة المخاطر والامتثال',
@@ -1060,5 +1064,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'nav.risk_register': 'سجل المخاطر',
     'nav.issue_management': 'إدارة المشاكل',
     'nav.remediation': 'الإجراءات العلاجية',
+    'nav.audit_plans': 'خطط التدقيق',
+    'nav.audit_engagements': 'مهام التدقيق',
+    'nav.control_tests': 'اختبارات الضوابط',
+    'nav.audit_findings': 'نتائج التدقيق',
   },
 };

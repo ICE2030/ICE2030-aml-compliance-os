@@ -138,6 +138,7 @@ from app.routers import phase5b
 from app.routers import ia_regulations
 from app.routers import phase_r
 from app.routers import grc_risks, grc_issues, grc_remediation, grc_dashboard
+from app.routers import grc_audit_plans, grc_audit_engagements, grc_control_tests, grc_audit_findings, grc_management_responses
 
 app.include_router(auth.router)
 app.include_router(onboarding.router)
@@ -160,6 +161,11 @@ app.include_router(grc_risks.router)
 app.include_router(grc_issues.router)
 app.include_router(grc_remediation.router)
 app.include_router(grc_dashboard.router)
+app.include_router(grc_audit_plans.router)
+app.include_router(grc_audit_engagements.router)
+app.include_router(grc_control_tests.router)
+app.include_router(grc_audit_findings.router)
+app.include_router(grc_management_responses.router)
 
 
 @app.get("/healthz")

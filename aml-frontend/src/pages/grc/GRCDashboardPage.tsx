@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Shield, AlertTriangle, CheckCircle, TrendingDown, ArrowRight,
-  BarChart3, AlertOctagon, Wrench, Target,
+  BarChart3, AlertOctagon, Wrench, Target, ClipboardList,
 } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -14,6 +14,12 @@ interface DashboardData {
   risk_register: { total: number; high_risks: number; deteriorating: number; avg_residual_score: number };
   issues: { total: number; open: number; critical_open: number; overdue: number };
   remediation: { total: number; blocked: number; overdue: number; avg_progress_pct: number };
+  audit: {
+    total_plans: number; active_plans: number; total_engagements: number; open_engagements: number;
+    total_findings: number; open_findings: number; critical_findings: number; overdue_findings: number;
+    findings_by_severity: Record<string, number>; total_tests: number; ineffective_tests: number;
+    overdue_responses: number;
+  };
   regulatory_backbone: { obligations: number; controls: number; evidence: number };
   exposure_areas: Array<{ area: string; area_ar: string; count: number; details: unknown }>;
   recommended_actions: Array<{ priority: string; action: string; action_ar: string; category: string }>;
@@ -71,7 +77,7 @@ export default function GRCDashboardPage() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -120,6 +126,24 @@ export default function GRCDashboardPage() {
                 </div>
               </div>
               <Wrench className="text-purple-500" size={36} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Audit Card */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-500">{language === 'ar' ? 'التدقيق الداخلي' : 'Internal Audit'}</p>
+                <p className="text-3xl font-bold text-slate-900">{data.audit?.open_findings || 0}</p>
+                <div className="flex gap-2 mt-2">
+                  {(data.audit?.critical_findings || 0) > 0 && <Badge variant="destructive" className="text-xs">{data.audit.critical_findings} {language === 'ar' ? 'حرجة' : 'critical'}</Badge>}
+                  {(data.audit?.overdue_findings || 0) > 0 && <Badge variant="outline" className="text-xs text-red-600 border-red-300">{data.audit.overdue_findings} {language === 'ar' ? 'متأخرة' : 'overdue'}</Badge>}
+                  <Badge variant="outline" className="text-xs">{data.audit?.open_engagements || 0} {language === 'ar' ? 'مهام مفتوحة' : 'open eng.'}</Badge>
+                </div>
+              </div>
+              <ClipboardList className="text-indigo-500" size={36} />
             </div>
           </CardContent>
         </Card>

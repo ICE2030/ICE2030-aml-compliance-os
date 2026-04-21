@@ -1,7 +1,8 @@
-"""Comprehensive tests for Phase G1 — GRC Expansion Layer.
+"""Comprehensive tests for Phase G1 + G2 — GRC Expansion Layer.
 
 Tests enterprise risk register, issue management, remediation tracking,
-and GRC dashboard endpoints.
+GRC dashboard, audit plans, audit engagements, control tests,
+audit findings, and management responses.
 """
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -619,3 +620,501 @@ async def test_bilingual_support(client: AsyncClient, auth_headers: dict):
     await client.delete(f"/api/grc/remediation/{action_id}", headers=auth_headers)
     await client.delete(f"/api/grc/issues/{issue_id}", headers=auth_headers)
     await client.delete(f"/api/grc/risks/{risk_id}", headers=auth_headers)
+
+
+# ── Phase G2: Audit Plan ──
+
+@pytest.mark.anyio
+async def test_audit_plan_crud(client: AsyncClient, auth_headers: dict):
+    """Test create, read, update, delete for audit plans."""
+    # Create
+    resp = await client.post("/api/grc/audit-plans", json={
+        "title": "Annual AML Audit 2026",
+        "title_ar": "التدقيق السنوي لمكافحة غسل الأموال 2026",
+        "description": "Comprehensive review of AML controls",
+        "scope_summary": "All AML/CTF controls across retail banking",
+        "period_start": "2026-01-01T00:00:00",
+        "period_end": "2026-12-31T00:00:00",
+        "owner": "Chief Audit Executive",
+        "status": "draft",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    plan = resp.json()
+    assert plan["title"] == "Annual AML Audit 2026"
+    assert plan["title_ar"] == "التدقيق السنوي لمكافحة غسل الأموال 2026"
+    assert plan["status"] == "draft"
+    plan_id = plan["id"]
+
+    # Read single
+    resp = await client.get(f"/api/grc/audit-plans/{plan_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == plan_id
+
+    # Update
+    resp = await client.put(f"/api/grc/audit-plans/{plan_id}", json={
+        "status": "approved",
+        "owner": "Updated CAE",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "approved"
+    assert resp.json()["owner"] == "Updated CAE"
+
+    # List
+    resp = await client.get("/api/grc/audit-plans", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] >= 1
+
+    # List with filter
+    resp = await client.get("/api/grc/audit-plans?status=approved", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["total"] >= 1
+
+    # Summary
+    resp = await client.get("/api/grc/audit-plans/summary", headers=auth_headers)
+    assert resp.status_code == 200
+    assert "total" in resp.json()
+    assert "by_status" in resp.json()
+
+    # Delete
+    resp = await client.delete(f"/api/grc/audit-plans/{plan_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] == plan_id
+
+
+# ── Phase G2: Audit Engagement ──
+
+@pytest.mark.anyio
+async def test_audit_engagement_crud(client: AsyncClient, auth_headers: dict):
+    """Test create, read, update, delete for audit engagements."""
+    # Create plan first
+    resp = await client.post("/api/grc/audit-plans", json={
+        "title": "Engagement Test Plan",
+        "description": "Plan for engagement testing",
+    }, headers=auth_headers)
+    plan_id = resp.json()["id"]
+
+    # Create engagement
+    resp = await client.post("/api/grc/audit-engagements", json={
+        "plan_id": plan_id,
+        "title": "CDD Process Review",
+        "title_ar": "مراجعة عملية العناية الواجبة",
+        "scope": "Customer Due Diligence procedures",
+        "objectives": "Verify CDD controls are operating effectively",
+        "owner": "Senior Auditor",
+        "status": "planned",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    eng = resp.json()
+    assert eng["title"] == "CDD Process Review"
+    assert eng["plan_id"] == plan_id
+    assert eng["status"] == "planned"
+    eng_id = eng["id"]
+
+    # Read single
+    resp = await client.get(f"/api/grc/audit-engagements/{eng_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == eng_id
+
+    # Update
+    resp = await client.put(f"/api/grc/audit-engagements/{eng_id}", json={
+        "status": "fieldwork",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "fieldwork"
+
+    # List
+    resp = await client.get("/api/grc/audit-engagements", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["total"] >= 1
+
+    # List with plan filter
+    resp = await client.get(f"/api/grc/audit-engagements?plan_id={plan_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["total"] >= 1
+
+    # Summary
+    resp = await client.get("/api/grc/audit-engagements/summary", headers=auth_headers)
+    assert resp.status_code == 200
+    assert "total" in resp.json()
+
+    # Delete
+    resp = await client.delete(f"/api/grc/audit-engagements/{eng_id}", headers=auth_headers)
+    assert resp.status_code == 200
+
+    # Cleanup
+    await client.delete(f"/api/grc/audit-plans/{plan_id}", headers=auth_headers)
+
+
+# ── Phase G2: Control Test ──
+
+@pytest.mark.anyio
+async def test_control_test_crud(client: AsyncClient, auth_headers: dict):
+    """Test create, read, update, delete for control tests."""
+    # Create plan + engagement
+    resp = await client.post("/api/grc/audit-plans", json={
+        "title": "Control Test Plan",
+    }, headers=auth_headers)
+    plan_id = resp.json()["id"]
+
+    resp = await client.post("/api/grc/audit-engagements", json={
+        "plan_id": plan_id,
+        "title": "Control Test Engagement",
+    }, headers=auth_headers)
+    eng_id = resp.json()["id"]
+
+    # Create control test
+    resp = await client.post(f"/api/grc/control-tests/{eng_id}", json={
+        "procedure": "Inspect CDD documentation for 25 sample customers",
+        "procedure_ar": "فحص وثائق العناية الواجبة لـ 25 عميل عينة",
+        "test_type": "both",
+        "tester": "Audit Analyst",
+        "design_result": "effective",
+        "operating_result": "partially_effective",
+        "overall_result": "partially_effective",
+        "sample_size": 25,
+        "exceptions_found": 3,
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    ct = resp.json()
+    assert ct["procedure"].startswith("Inspect CDD")
+    assert ct["test_type"] == "both"
+    assert ct["overall_result"] == "partially_effective"
+    assert ct["sample_size"] == 25
+    assert ct["exceptions_found"] == 3
+    ct_id = ct["id"]
+
+    # Read single
+    resp = await client.get(f"/api/grc/control-tests/{ct_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == ct_id
+
+    # Update
+    resp = await client.put(f"/api/grc/control-tests/{ct_id}", json={
+        "overall_result": "ineffective",
+        "notes": "Multiple exceptions found",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["overall_result"] == "ineffective"
+    assert resp.json()["notes"] == "Multiple exceptions found"
+
+    # List
+    resp = await client.get("/api/grc/control-tests", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["total"] >= 1
+
+    # List with engagement filter
+    resp = await client.get(f"/api/grc/control-tests?engagement_id={eng_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["total"] >= 1
+
+    # Summary
+    resp = await client.get("/api/grc/control-tests/summary", headers=auth_headers)
+    assert resp.status_code == 200
+    assert "total" in resp.json()
+    assert "by_result" in resp.json()
+
+    # Delete
+    resp = await client.delete(f"/api/grc/control-tests/{ct_id}", headers=auth_headers)
+    assert resp.status_code == 200
+
+    # Cleanup
+    await client.delete(f"/api/grc/audit-engagements/{eng_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/audit-plans/{plan_id}", headers=auth_headers)
+
+
+# ── Phase G2: Audit Finding + Management Response ──
+
+@pytest.mark.anyio
+async def test_audit_finding_and_response(client: AsyncClient, auth_headers: dict):
+    """Test full finding + management response lifecycle."""
+    # Create plan + engagement
+    resp = await client.post("/api/grc/audit-plans", json={
+        "title": "Finding Test Plan",
+    }, headers=auth_headers)
+    plan_id = resp.json()["id"]
+
+    resp = await client.post("/api/grc/audit-engagements", json={
+        "plan_id": plan_id,
+        "title": "Finding Test Engagement",
+    }, headers=auth_headers)
+    eng_id = resp.json()["id"]
+
+    # Create finding
+    resp = await client.post(f"/api/grc/audit-findings/{eng_id}", json={
+        "title": "Inadequate CDD Documentation",
+        "title_ar": "عدم كفاية وثائق العناية الواجبة",
+        "description": "12% of sampled accounts had incomplete CDD files",
+        "severity": "high",
+        "status": "open",
+        "root_cause": "Lack of standardized documentation checklist",
+        "owner": "Compliance Manager",
+        "due_date": "2026-06-30T00:00:00",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    finding = resp.json()
+    assert finding["title"] == "Inadequate CDD Documentation"
+    assert finding["severity"] == "high"
+    assert finding["status"] == "open"
+    finding_id = finding["id"]
+
+    # Read single
+    resp = await client.get(f"/api/grc/audit-findings/{finding_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == finding_id
+
+    # Update
+    resp = await client.put(f"/api/grc/audit-findings/{finding_id}", json={
+        "status": "in_remediation",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "in_remediation"
+
+    # List
+    resp = await client.get("/api/grc/audit-findings", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["total"] >= 1
+
+    # Filter by severity
+    resp = await client.get("/api/grc/audit-findings?severity=high", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["total"] >= 1
+
+    # Summary
+    resp = await client.get("/api/grc/audit-findings/summary", headers=auth_headers)
+    assert resp.status_code == 200
+    summary = resp.json()
+    assert "total" in summary
+    assert "open" in summary
+    assert "by_severity" in summary
+    assert "by_status" in summary
+
+    # ── Management Response ──
+
+    # Create response
+    resp = await client.post(f"/api/grc/management-responses/{finding_id}", json={
+        "response_text": "We will implement a standardized CDD checklist",
+        "response_text_ar": "سنقوم بتطبيق قائمة مراجعة موحدة للعناية الواجبة",
+        "owner": "Compliance Manager",
+        "due_date": "2026-05-15T00:00:00",
+        "status": "accepted",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    mgmt_resp = resp.json()
+    assert mgmt_resp["response_text"].startswith("We will implement")
+    assert mgmt_resp["status"] == "accepted"
+    resp_id = mgmt_resp["id"]
+
+    # Read single
+    resp = await client.get(f"/api/grc/management-responses/{resp_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == resp_id
+
+    # Update
+    resp = await client.put(f"/api/grc/management-responses/{resp_id}", json={
+        "status": "completed",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "completed"
+    assert resp.json()["completed_at"] is not None
+
+    # List
+    resp = await client.get("/api/grc/management-responses", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["total"] >= 1
+
+    # List by finding
+    resp = await client.get(f"/api/grc/management-responses?finding_id={finding_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["total"] >= 1
+
+    # Close finding
+    resp = await client.put(f"/api/grc/audit-findings/{finding_id}", json={
+        "status": "closed",
+        "closure_evidence": "CDD checklist implemented and trained",
+        "closure_validated_by": "Head of Internal Audit",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    closed = resp.json()
+    assert closed["status"] == "closed"
+    assert closed["closed_at"] is not None
+    assert closed["closure_validated_by"] == "Head of Internal Audit"
+
+    # Cleanup
+    await client.delete(f"/api/grc/management-responses/{resp_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/audit-findings/{finding_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/audit-engagements/{eng_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/audit-plans/{plan_id}", headers=auth_headers)
+
+
+# ── Phase G2: End-to-End Audit Flow ──
+
+@pytest.mark.anyio
+async def test_audit_end_to_end_flow(client: AsyncClient, auth_headers: dict):
+    """Test full audit lifecycle: plan → engagement → test → finding → response."""
+    # 1. Create audit plan
+    resp = await client.post("/api/grc/audit-plans", json={
+        "title": "E2E Audit Plan",
+        "title_ar": "خطة التدقيق الشاملة",
+        "status": "approved",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    plan_id = resp.json()["id"]
+
+    # 2. Create engagement under plan
+    resp = await client.post("/api/grc/audit-engagements", json={
+        "plan_id": plan_id,
+        "title": "E2E AML Compliance Engagement",
+        "title_ar": "مهمة الامتثال الشاملة",
+        "status": "fieldwork",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    eng_id = resp.json()["id"]
+
+    # 3. Create control test under engagement
+    resp = await client.post(f"/api/grc/control-tests/{eng_id}", json={
+        "procedure": "Review transaction monitoring alerts for false positive rates",
+        "test_type": "operating",
+        "overall_result": "ineffective",
+        "sample_size": 50,
+        "exceptions_found": 15,
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    ct_id = resp.json()["id"]
+
+    # 4. Create finding from failed test
+    resp = await client.post(f"/api/grc/audit-findings/{eng_id}", json={
+        "title": "High False Positive Rate in TM",
+        "title_ar": "معدل إنذارات كاذبة مرتفع في مراقبة المعاملات",
+        "description": "30% false positive rate exceeds 10% threshold",
+        "severity": "critical",
+        "status": "open",
+        "root_cause": "Outdated detection rules",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    finding_id = resp.json()["id"]
+    assert resp.json()["severity"] == "critical"
+
+    # 5. Create management response
+    resp = await client.post(f"/api/grc/management-responses/{finding_id}", json={
+        "response_text": "We will recalibrate TM rules and reduce FP rate to <5%",
+        "response_text_ar": "سنعيد معايرة قواعد المراقبة وتقليل معدل الإنذارات الكاذبة إلى أقل من 5%",
+        "owner": "Head of Financial Crime",
+        "status": "accepted",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    resp_id = resp.json()["id"]
+
+    # 6. Verify dashboard includes audit data
+    resp = await client.get("/api/grc/dashboard", headers=auth_headers)
+    assert resp.status_code == 200
+    dashboard = resp.json()
+    assert "audit" in dashboard
+    audit_section = dashboard["audit"]
+    assert audit_section["total_findings"] >= 1
+    assert audit_section["open_findings"] >= 1
+    assert audit_section["critical_findings"] >= 1
+
+    # Cleanup
+    await client.delete(f"/api/grc/management-responses/{resp_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/audit-findings/{finding_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/control-tests/{ct_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/audit-engagements/{eng_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/audit-plans/{plan_id}", headers=auth_headers)
+
+
+@pytest.mark.anyio
+async def test_audit_invalid_references(client: AsyncClient, auth_headers: dict):
+    """Test error handling for invalid references."""
+    # Invalid plan reference for engagement
+    resp = await client.post("/api/grc/audit-engagements", json={
+        "plan_id": "nonexistent-plan-id",
+        "title": "Should Fail",
+    }, headers=auth_headers)
+    assert resp.status_code == 404
+
+    # Invalid engagement reference for control test
+    resp = await client.post("/api/grc/control-tests/nonexistent-eng-id", json={
+        "procedure": "Should Fail",
+    }, headers=auth_headers)
+    assert resp.status_code == 404
+
+    # Invalid engagement reference for finding
+    resp = await client.post("/api/grc/audit-findings/nonexistent-eng-id", json={
+        "title": "Should Fail",
+        "description": "Should Fail",
+    }, headers=auth_headers)
+    assert resp.status_code == 404
+
+    # Invalid finding reference for response
+    resp = await client.post("/api/grc/management-responses/nonexistent-finding-id", json={
+        "response_text": "Should Fail",
+    }, headers=auth_headers)
+    assert resp.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_audit_bilingual(client: AsyncClient, auth_headers: dict):
+    """Test bilingual support across all audit entities."""
+    # Plan
+    resp = await client.post("/api/grc/audit-plans", json={
+        "title": "Bilingual Audit Plan",
+        "title_ar": "خطة تدقيق ثنائية اللغة",
+        "description": "English description",
+        "description_ar": "وصف بالعربية",
+        "scope_summary": "English scope",
+        "scope_summary_ar": "نطاق بالعربية",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    plan = resp.json()
+    assert plan["title_ar"] == "خطة تدقيق ثنائية اللغة"
+    assert plan["scope_summary_ar"] == "نطاق بالعربية"
+    plan_id = plan["id"]
+
+    # Engagement
+    resp = await client.post("/api/grc/audit-engagements", json={
+        "plan_id": plan_id,
+        "title": "Bilingual Engagement",
+        "title_ar": "مهمة تدقيق ثنائية اللغة",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    eng = resp.json()
+    assert eng["title_ar"] == "مهمة تدقيق ثنائية اللغة"
+    eng_id = eng["id"]
+
+    # Control Test
+    resp = await client.post(f"/api/grc/control-tests/{eng_id}", json={
+        "procedure": "Test procedure in English",
+        "procedure_ar": "إجراء الاختبار بالعربية",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["procedure_ar"] == "إجراء الاختبار بالعربية"
+    ct_id = resp.json()["id"]
+
+    # Finding
+    resp = await client.post(f"/api/grc/audit-findings/{eng_id}", json={
+        "title": "Bilingual Finding",
+        "title_ar": "نتيجة تدقيق ثنائية اللغة",
+        "description": "English finding",
+        "description_ar": "نتيجة بالعربية",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    finding = resp.json()
+    assert finding["title_ar"] == "نتيجة تدقيق ثنائية اللغة"
+    finding_id = finding["id"]
+
+    # Response
+    resp = await client.post(f"/api/grc/management-responses/{finding_id}", json={
+        "response_text": "English response",
+        "response_text_ar": "استجابة بالعربية",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["response_text_ar"] == "استجابة بالعربية"
+    resp_id = resp.json()["id"]
+
+    # Cleanup
+    await client.delete(f"/api/grc/management-responses/{resp_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/audit-findings/{finding_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/control-tests/{ct_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/audit-engagements/{eng_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/audit-plans/{plan_id}", headers=auth_headers)

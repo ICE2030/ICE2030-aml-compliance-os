@@ -6,7 +6,7 @@ Answers three questions:
 3. What should we do now?
 
 Aggregates data from enterprise risks, issues, remediation actions,
-obligations, controls, and evidence to produce a decision-oriented summary.
+obligations, controls, evidence, and audit data to produce a decision-oriented summary.
 """
 import logging
 from datetime import datetime, timezone
@@ -18,6 +18,13 @@ from app.models.grc.enterprise_risk import (
 )
 from app.models.grc.issue import (
     Issue, IssueStatus, IssueSeverity, RemediationAction, RemediationStatus,
+)
+from app.models.grc.audit import (
+    AuditPlan, AuditPlanStatus,
+    AuditEngagement, EngagementStatus,
+    ControlTest, TestResult,
+    AuditFinding, FindingSeverity, FindingStatus,
+    ManagementResponse, ResponseStatus,
 )
 from app.models.regulatory.obligation import (
     Obligation, Control, EvidenceArtifact, RegulatoryRisk,
@@ -165,6 +172,114 @@ class GRCDashboardService:
                 "category": "remediation",
             })
 
+        # ── Audit summary ──
+        total_plans = (await db.execute(
+            select(sqla_func.count()).select_from(AuditPlan)
+        )).scalar() or 0
+
+        active_plans = (await db.execute(
+            select(sqla_func.count()).select_from(AuditPlan).where(
+                AuditPlan.status.in_([AuditPlanStatus.APPROVED, AuditPlanStatus.IN_PROGRESS])
+            )
+        )).scalar() or 0
+
+        total_engagements = (await db.execute(
+            select(sqla_func.count()).select_from(AuditEngagement)
+        )).scalar() or 0
+
+        open_engagements = (await db.execute(
+            select(sqla_func.count()).select_from(AuditEngagement).where(
+                AuditEngagement.status.in_([EngagementStatus.PLANNED, EngagementStatus.FIELDWORK, EngagementStatus.REPORTING])
+            )
+        )).scalar() or 0
+
+        total_findings = (await db.execute(
+            select(sqla_func.count()).select_from(AuditFinding)
+        )).scalar() or 0
+
+        open_findings = (await db.execute(
+            select(sqla_func.count()).select_from(AuditFinding).where(
+                AuditFinding.status.in_([FindingStatus.OPEN, FindingStatus.IN_REMEDIATION])
+            )
+        )).scalar() or 0
+
+        critical_findings = (await db.execute(
+            select(sqla_func.count()).select_from(AuditFinding).where(
+                AuditFinding.severity == FindingSeverity.CRITICAL,
+                AuditFinding.status != FindingStatus.CLOSED,
+            )
+        )).scalar() or 0
+
+        overdue_findings = (await db.execute(
+            select(sqla_func.count()).select_from(AuditFinding).where(
+                AuditFinding.status.in_([FindingStatus.OPEN, FindingStatus.IN_REMEDIATION]),
+                AuditFinding.due_date < datetime.now(timezone.utc),
+            )
+        )).scalar() or 0
+
+        # Findings by severity
+        finding_sev_result = await db.execute(
+            select(AuditFinding.severity, sqla_func.count())
+            .where(AuditFinding.status != FindingStatus.CLOSED)
+            .group_by(AuditFinding.severity)
+        )
+        findings_by_severity = {
+            str(row[0].value if hasattr(row[0], "value") else row[0]): row[1]
+            for row in finding_sev_result.all()
+        }
+
+        # Control test results — repeated failures
+        total_tests = (await db.execute(
+            select(sqla_func.count()).select_from(ControlTest)
+        )).scalar() or 0
+
+        ineffective_tests = (await db.execute(
+            select(sqla_func.count()).select_from(ControlTest).where(
+                ControlTest.overall_result == TestResult.INEFFECTIVE
+            )
+        )).scalar() or 0
+
+        # Overdue management responses
+        overdue_responses = (await db.execute(
+            select(sqla_func.count()).select_from(ManagementResponse).where(
+                ManagementResponse.status.in_([ResponseStatus.PENDING, ResponseStatus.IN_PROGRESS]),
+                ManagementResponse.due_date < datetime.now(timezone.utc),
+            )
+        )).scalar() or 0
+
+        # ── Build recommended actions (audit-related) ──
+        if critical_findings > 0:
+            recommended_actions.append({
+                "priority": "critical",
+                "action": f"Address {critical_findings} critical audit finding(s) immediately",
+                "action_ar": f"معالجة {critical_findings} نتيجة تدقيق حرجة فوراً",
+                "category": "audit",
+            })
+
+        if overdue_findings > 0:
+            recommended_actions.append({
+                "priority": "high",
+                "action": f"Resolve {overdue_findings} overdue audit finding(s)",
+                "action_ar": f"حل {overdue_findings} نتيجة تدقيق متأخرة",
+                "category": "audit",
+            })
+
+        if ineffective_tests > 0:
+            recommended_actions.append({
+                "priority": "high",
+                "action": f"Review {ineffective_tests} ineffective control test(s) — repeated failures detected",
+                "action_ar": f"مراجعة {ineffective_tests} اختبار رقابة غير فعال — تم اكتشاف إخفاقات متكررة",
+                "category": "audit",
+            })
+
+        if overdue_responses > 0:
+            recommended_actions.append({
+                "priority": "medium",
+                "action": f"Follow up on {overdue_responses} overdue management response(s)",
+                "action_ar": f"متابعة {overdue_responses} رد إداري متأخر",
+                "category": "audit",
+            })
+
         # If no issues at all, suggest proactive review
         if total_risks == 0 and total_issues == 0:
             recommended_actions.append({
@@ -234,6 +349,20 @@ class GRCDashboardService:
                 "overdue": overdue_actions,
                 "avg_progress_pct": round(float(avg_progress), 1),
             },
+            "audit": {
+                "total_plans": total_plans,
+                "active_plans": active_plans,
+                "total_engagements": total_engagements,
+                "open_engagements": open_engagements,
+                "total_findings": total_findings,
+                "open_findings": open_findings,
+                "critical_findings": critical_findings,
+                "overdue_findings": overdue_findings,
+                "findings_by_severity": findings_by_severity,
+                "total_tests": total_tests,
+                "ineffective_tests": ineffective_tests,
+                "overdue_responses": overdue_responses,
+            },
             "regulatory_backbone": {
                 "obligations": total_obligations,
                 "controls": total_controls,
@@ -241,5 +370,5 @@ class GRCDashboardService:
             },
             "exposure_areas": exposure_areas,
             "recommended_actions": recommended_actions,
-            "operating_chain": "Source → Provision → Obligation → Control → Evidence → Risk → Issue → Remediation → Action",
+            "operating_chain": "Source → Provision → Obligation → Control → Evidence → Risk → Issue → Remediation → Audit → Finding → Response",
         }

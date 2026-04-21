@@ -31,6 +31,10 @@ import GRCDashboardPage from '@/pages/grc/GRCDashboardPage';
 import RiskRegisterPage from '@/pages/grc/RiskRegisterPage';
 import IssueManagementPage from '@/pages/grc/IssueManagementPage';
 import RemediationPage from '@/pages/grc/RemediationPage';
+import AuditPlanPage from '@/pages/grc/AuditPlanPage';
+import AuditEngagementPage from '@/pages/grc/AuditEngagementPage';
+import ControlTestPage from '@/pages/grc/ControlTestPage';
+import AuditFindingPage from '@/pages/grc/AuditFindingPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -247,6 +251,34 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <RemediationPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/audit-plans" element={
+        <ProtectedRoute>
+          <Layout>
+            <AuditPlanPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/audit-engagements" element={
+        <ProtectedRoute>
+          <Layout>
+            <AuditEngagementPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/control-tests" element={
+        <ProtectedRoute>
+          <Layout>
+            <ControlTestPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/audit-findings" element={
+        <ProtectedRoute>
+          <Layout>
+            <AuditFindingPage />
           </Layout>
         </ProtectedRoute>
       } />
