@@ -474,7 +474,7 @@ class RiskScoringService:
 
         # Factor 2: Binding status
         is_binding = authority_score >= 0.7
-        factors["is_binding"] = _BINDING_WEIGHT if is_binding else 0.0
+        factors["is_binding"] = 1.0 if is_binding else 0.0
 
         # Factor 3: Obligation criticality
         ob_type = ob.obligation_type.value if hasattr(ob.obligation_type, 'value') else str(ob.obligation_type)

@@ -82,7 +82,7 @@ def _classify_change(
 
     # Check if type changed (e.g., guidance -> obligation)
     if old_type != new_type:
-        if new_type in ("obligation", "prohibition", "penalty"):
+        if new_type in ("obligation", "prohibition", "penalty", "reporting"):
             return ChangeClassification.MATERIAL
         return ChangeClassification.OPERATIONAL
 
