@@ -35,6 +35,8 @@ import AuditPlanPage from '@/pages/grc/AuditPlanPage';
 import AuditEngagementPage from '@/pages/grc/AuditEngagementPage';
 import ControlTestPage from '@/pages/grc/ControlTestPage';
 import AuditFindingPage from '@/pages/grc/AuditFindingPage';
+import ActionCenterPage from '@/pages/grc/ActionCenterPage';
+import NarrativePage from '@/pages/grc/NarrativePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -279,6 +281,20 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <AuditFindingPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/actions" element={
+        <ProtectedRoute>
+          <Layout>
+            <ActionCenterPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/narratives" element={
+        <ProtectedRoute>
+          <Layout>
+            <NarrativePage />
           </Layout>
         </ProtectedRoute>
       } />

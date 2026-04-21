@@ -4,10 +4,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Shield, AlertTriangle, CheckCircle, TrendingDown, ArrowRight,
-  BarChart3, AlertOctagon, Wrench, Target, ClipboardList,
+  BarChart3, AlertOctagon, Wrench, Target, ClipboardList, Zap, Clock,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+interface TopAction {
+  id: string;
+  title: string;
+  title_ar?: string;
+  priority: string;
+  status: string;
+  source_type: string;
+  owner?: string;
+  due_date?: string;
+}
+
+interface ActionCenter {
+  total: number;
+  open: number;
+  overdue: number;
+  critical: number;
+  completed: number;
+  by_priority: Record<string, number>;
+  by_source: Record<string, number>;
+  top_actions: TopAction[];
+}
 
 interface DashboardData {
   generated_at: string;
@@ -20,6 +43,7 @@ interface DashboardData {
     findings_by_severity: Record<string, number>; total_tests: number; ineffective_tests: number;
     overdue_responses: number;
   };
+  action_center?: ActionCenter;
   regulatory_backbone: { obligations: number; controls: number; evidence: number };
   exposure_areas: Array<{ area: string; area_ar: string; count: number; details: unknown }>;
   recommended_actions: Array<{ priority: string; action: string; action_ar: string; category: string }>;
@@ -164,6 +188,96 @@ export default function GRCDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Action Center Card */}
+      {data.action_center && (
+        <Card className="border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap size={20} className="text-blue-500" />
+                {language === 'ar' ? 'مركز الإجراءات' : 'Action Center'}
+              </div>
+              <Link to="/grc/actions" className="text-sm text-blue-600 hover:underline font-normal">
+                {language === 'ar' ? 'عرض الكل →' : 'View All →'}
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 gap-4 mb-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600">{data.action_center.open}</p>
+                <p className="text-xs text-slate-500">{language === 'ar' ? 'مفتوح' : 'Open'}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-600">{data.action_center.overdue}</p>
+                <p className="text-xs text-slate-500">{language === 'ar' ? 'متأخر' : 'Overdue'}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-orange-600">{data.action_center.critical}</p>
+                <p className="text-xs text-slate-500">{language === 'ar' ? 'حرج' : 'Critical'}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600">{data.action_center.completed}</p>
+                <p className="text-xs text-slate-500">{language === 'ar' ? 'مكتمل' : 'Completed'}</p>
+              </div>
+            </div>
+
+            {/* Top 3 Actions */}
+            {data.action_center.top_actions && data.action_center.top_actions.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-2">
+                  {language === 'ar' ? 'الإجراءات الأكثر إلحاحاً' : 'Most Urgent Actions'}
+                </h4>
+                <div className="space-y-2">
+                  {data.action_center.top_actions.map((action, idx) => (
+                    <div key={idx} className={`border rounded-lg p-3 ${priorityColor(action.priority)}`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Badge className={`text-xs shrink-0 ${
+                              action.priority === 'critical' ? 'bg-red-600 text-white' :
+                              action.priority === 'high' ? 'bg-orange-600 text-white' :
+                              action.priority === 'medium' ? 'bg-yellow-600 text-white' : 'bg-blue-600 text-white'
+                            }`}>
+                              {action.priority.toUpperCase()}
+                            </Badge>
+                            <span className="text-sm font-medium">
+                              {language === 'ar' && action.title_ar ? action.title_ar : action.title}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                            <span>{action.source_type}</span>
+                            {action.owner && <span>{action.owner}</span>}
+                            {action.due_date && (
+                              <span className="flex items-center gap-1">
+                                <Clock size={10} />
+                                {action.due_date.split('T')[0]}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* By Priority Bar */}
+            {Object.keys(data.action_center.by_priority).length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-xs font-semibold text-slate-500 mb-1">{language === 'ar' ? 'حسب الأولوية' : 'By Priority'}</h4>
+                <div className="flex gap-2">
+                  {Object.entries(data.action_center.by_priority).map(([prio, count]) => (
+                    <Badge key={prio} variant="outline" className="text-xs">{prio}: {count}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Exposure Areas + Recommended Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

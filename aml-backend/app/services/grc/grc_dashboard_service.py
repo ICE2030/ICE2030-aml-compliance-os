@@ -26,6 +26,9 @@ from app.models.grc.audit import (
     AuditFinding, FindingSeverity, FindingStatus,
     ManagementResponse, ResponseStatus,
 )
+from app.models.grc.action import (
+    GRCAction, ActionPriority, ActionStatus, ActionSourceType,
+)
 from app.models.regulatory.obligation import (
     Obligation, Control, EvidenceArtifact, RegulatoryRisk,
 )
@@ -370,5 +373,100 @@ class GRCDashboardService:
             },
             "exposure_areas": exposure_areas,
             "recommended_actions": recommended_actions,
-            "operating_chain": "Source → Provision → Obligation → Control → Evidence → Risk → Issue → Remediation → Audit → Finding → Response",
+            "action_center": await _get_action_center_summary(db),
+            "operating_chain": "Source → Provision → Obligation → Control → Evidence → Risk → Issue → Remediation → Audit → Finding → Response → Action",
         }
+
+
+async def _get_action_center_summary(db: AsyncSession) -> dict:
+    """Get action center metrics for the dashboard."""
+    now = datetime.now(timezone.utc)
+
+    total_actions = (await db.execute(
+        select(sqla_func.count()).select_from(GRCAction)
+    )).scalar() or 0
+
+    open_actions = (await db.execute(
+        select(sqla_func.count()).select_from(GRCAction).where(
+            GRCAction.status.in_([ActionStatus.OPEN, ActionStatus.IN_PROGRESS])
+        )
+    )).scalar() or 0
+
+    overdue_actions = (await db.execute(
+        select(sqla_func.count()).select_from(GRCAction).where(
+            GRCAction.status.in_([ActionStatus.OPEN, ActionStatus.IN_PROGRESS]),
+            GRCAction.due_date < now,
+        )
+    )).scalar() or 0
+
+    critical_actions = (await db.execute(
+        select(sqla_func.count()).select_from(GRCAction).where(
+            GRCAction.status.in_([ActionStatus.OPEN, ActionStatus.IN_PROGRESS]),
+            GRCAction.priority == ActionPriority.CRITICAL,
+        )
+    )).scalar() or 0
+
+    completed_actions = (await db.execute(
+        select(sqla_func.count()).select_from(GRCAction).where(
+            GRCAction.status == ActionStatus.COMPLETED
+        )
+    )).scalar() or 0
+
+    # By priority
+    prio_result = await db.execute(
+        select(GRCAction.priority, sqla_func.count())
+        .where(GRCAction.status.in_([ActionStatus.OPEN, ActionStatus.IN_PROGRESS]))
+        .group_by(GRCAction.priority)
+    )
+    by_priority = {
+        str(row[0].value if hasattr(row[0], "value") else row[0]): row[1]
+        for row in prio_result.all()
+    }
+
+    # By source type
+    src_result = await db.execute(
+        select(GRCAction.source_type, sqla_func.count())
+        .where(GRCAction.status.in_([ActionStatus.OPEN, ActionStatus.IN_PROGRESS]))
+        .group_by(GRCAction.source_type)
+    )
+    by_source = {
+        str(row[0].value if hasattr(row[0], "value") else row[0]): row[1]
+        for row in src_result.all()
+    }
+
+    # Top 3 actions
+    top_stmt = (
+        select(GRCAction)
+        .where(GRCAction.status.in_([ActionStatus.OPEN, ActionStatus.IN_PROGRESS]))
+        .order_by(
+            GRCAction.priority.asc(),
+            GRCAction.due_date.asc().nulls_last(),
+            GRCAction.created_at.asc(),
+        )
+        .limit(3)
+    )
+    top_result = await db.execute(top_stmt)
+    top_actions = [
+        {
+            "id": a.id,
+            "title": a.title,
+            "title_ar": a.title_ar,
+            "priority": a.priority.value,
+            "status": a.status.value,
+            "source_type": a.source_type.value,
+            "owner": a.owner,
+            "due_date": a.due_date.isoformat() if a.due_date else None,
+        }
+        for a in top_result.scalars().all()
+    ]
+
+    return {
+        "total": total_actions,
+        "open": open_actions,
+        "overdue": overdue_actions,
+        "critical": critical_actions,
+        "completed": completed_actions,
+        "by_priority": by_priority,
+        "by_source": by_source,
+        "top_actions": top_actions,
+    }

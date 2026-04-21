@@ -1,4 +1,4 @@
-"""GRC Expansion Layer models — Enterprise Risk, Issues, Remediation, Audit."""
+"""GRC Expansion Layer models — Enterprise Risk, Issues, Remediation, Audit, Actions, Narratives."""
 from app.models.grc.enterprise_risk import (
     EnterpriseRisk,
     RiskCategory,
@@ -16,6 +16,10 @@ from app.models.grc.audit import (
     AuditFinding,
     ManagementResponse,
 )
+from app.models.grc.action import (
+    GRCAction,
+    NarrativeSummary,
+)
 
 __all__ = [
     "EnterpriseRisk",
@@ -29,4 +33,6 @@ __all__ = [
     "ControlTest",
     "AuditFinding",
     "ManagementResponse",
+    "GRCAction",
+    "NarrativeSummary",
 ]

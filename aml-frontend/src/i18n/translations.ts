@@ -534,6 +534,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'nav.audit_engagements': 'Audit Engagements',
     'nav.control_tests': 'Control Tests',
     'nav.audit_findings': 'Audit Findings',
+    'nav.action_center': 'Action Center',
+    'nav.narratives': 'Executive Narratives',
   },
   ar: {
     'app.title': 'نظام حوكمة المخاطر والامتثال',
@@ -1068,5 +1070,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'nav.audit_engagements': 'مهام التدقيق',
     'nav.control_tests': 'اختبارات الضوابط',
     'nav.audit_findings': 'نتائج التدقيق',
+    'nav.action_center': 'مركز الإجراءات',
+    'nav.narratives': 'الملخصات التنفيذية',
   },
 };

@@ -1118,3 +1118,339 @@ async def test_audit_bilingual(client: AsyncClient, auth_headers: dict):
     await client.delete(f"/api/grc/control-tests/{ct_id}", headers=auth_headers)
     await client.delete(f"/api/grc/audit-engagements/{eng_id}", headers=auth_headers)
     await client.delete(f"/api/grc/audit-plans/{plan_id}", headers=auth_headers)
+
+
+# ── Phase G3: Action Center ──
+
+@pytest.mark.anyio
+async def test_action_crud(client: AsyncClient, auth_headers: dict):
+    """Test create, read, update, delete for GRC actions."""
+    # Create
+    resp = await client.post("/api/grc/actions", json={
+        "title": "Review AML Policy Controls",
+        "title_ar": "مراجعة ضوابط سياسة مكافحة غسل الأموال",
+        "description": "Annual review of AML policy controls",
+        "priority": "high",
+        "source_type": "risk",
+        "origin": "manual",
+        "owner": "Compliance Lead",
+        "due_date": "2026-06-30T00:00:00",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    action = resp.json()
+    assert action["title"] == "Review AML Policy Controls"
+    assert action["title_ar"] == "مراجعة ضوابط سياسة مكافحة غسل الأموال"
+    assert action["priority"] == "high"
+    assert action["status"] == "open"
+    assert action["origin"] == "manual"
+    assert action["owner"] == "Compliance Lead"
+    action_id = action["id"]
+
+    # Read single
+    resp = await client.get(f"/api/grc/actions/{action_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == action_id
+
+    # Update
+    resp = await client.put(f"/api/grc/actions/{action_id}", json={
+        "status": "in_progress",
+        "owner": "Updated Lead",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    updated = resp.json()
+    assert updated["status"] == "in_progress"
+    assert updated["owner"] == "Updated Lead"
+
+    # Complete
+    resp = await client.put(f"/api/grc/actions/{action_id}", json={
+        "status": "completed",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    completed = resp.json()
+    assert completed["status"] == "completed"
+
+    # List
+    resp = await client.get("/api/grc/actions", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] >= 1
+    assert len(data["items"]) >= 1
+
+    # Delete
+    resp = await client.delete(f"/api/grc/actions/{action_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] == action_id
+
+
+@pytest.mark.anyio
+async def test_action_filters(client: AsyncClient, auth_headers: dict):
+    """Test action list filtering by status, priority, source_type."""
+    ids = []
+    for prio, src in [("critical", "risk"), ("low", "issue"), ("high", "audit_finding")]:
+        resp = await client.post("/api/grc/actions", json={
+            "title": f"Filter test {prio} {src}",
+            "priority": prio,
+            "source_type": src,
+            "origin": "manual",
+        }, headers=auth_headers)
+        assert resp.status_code == 200
+        ids.append(resp.json()["id"])
+
+    # Filter by priority
+    resp = await client.get("/api/grc/actions?priority=critical", headers=auth_headers)
+    assert resp.status_code == 200
+    for item in resp.json()["items"]:
+        assert item["priority"] == "critical"
+
+    # Filter by source_type
+    resp = await client.get("/api/grc/actions?source_type=issue", headers=auth_headers)
+    assert resp.status_code == 200
+    for item in resp.json()["items"]:
+        assert item["source_type"] == "issue"
+
+    # Cleanup
+    for aid in ids:
+        await client.delete(f"/api/grc/actions/{aid}", headers=auth_headers)
+
+
+@pytest.mark.anyio
+async def test_action_summary(client: AsyncClient, auth_headers: dict):
+    """Test action summary endpoint."""
+    resp = await client.get("/api/grc/actions/summary", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "total" in data
+    assert "open" in data
+    assert "overdue" in data
+    assert "completed" in data
+    assert "by_priority" in data
+    assert "by_source" in data
+
+
+@pytest.mark.anyio
+async def test_action_top(client: AsyncClient, auth_headers: dict):
+    """Test top actions endpoint."""
+    resp = await client.get("/api/grc/actions/top?limit=3", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, list)
+    assert len(data) <= 3
+
+
+@pytest.mark.anyio
+async def test_action_scan_alerts(client: AsyncClient, auth_headers: dict):
+    """Test alert scanning endpoint."""
+    resp = await client.post("/api/grc/actions/scan-alerts", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, dict)
+
+
+@pytest.mark.anyio
+async def test_action_scan_patterns(client: AsyncClient, auth_headers: dict):
+    """Test pattern scanning endpoint."""
+    resp = await client.post("/api/grc/actions/scan-patterns", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, dict)
+
+
+# ── Phase G3: Narrative Layer ──
+
+@pytest.mark.anyio
+async def test_narrative_generate_and_crud(client: AsyncClient, auth_headers: dict):
+    """Test narrative generation, list, edit, delete."""
+    # Generate
+    resp = await client.post("/api/grc/narratives/generate", headers=auth_headers)
+    assert resp.status_code == 200
+    narrative = resp.json()
+    assert "id" in narrative
+    assert narrative["is_ai_generated"] is True
+    assert narrative["ai_model"] == "rule-based"
+    assert "sections" in narrative
+    assert "content" in narrative
+    narrative_id = narrative["id"]
+
+    # List
+    resp = await client.get("/api/grc/narratives", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] >= 1
+
+    # Read single
+    resp = await client.get(f"/api/grc/narratives/{narrative_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == narrative_id
+
+    # Edit (user override of content)
+    resp = await client.put(f"/api/grc/narratives/{narrative_id}", json={
+        "content": "User-edited summary for board review",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    edited = resp.json()
+    assert edited["content"] == "User-edited summary for board review"
+    assert edited["is_edited"] is True
+
+    # Delete
+    resp = await client.delete(f"/api/grc/narratives/{narrative_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] == narrative_id
+
+
+# ── Phase G3: Cross-Links ──
+
+@pytest.mark.anyio
+async def test_cross_links(client: AsyncClient, auth_headers: dict):
+    """Test cross-linking endpoint returns proper structure."""
+    # Create a risk to have a valid entity
+    resp = await client.post("/api/grc/risks", json={
+        "title": "Cross-link Test Risk",
+        "description": "Testing cross-link navigation",
+        "category": "operational",
+        "inherent_likelihood": "possible",
+        "inherent_impact": "moderate",
+    }, headers=auth_headers)
+    risk_id = resp.json()["id"]
+
+    # Get cross-links for the risk
+    resp = await client.get(f"/api/grc/cross-links/risk/{risk_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "entity_type" in data
+    assert "entity_id" in data
+    assert data["entity_type"] == "risk"
+    assert data["entity_id"] == risk_id
+
+    # Cleanup
+    await client.delete(f"/api/grc/risks/{risk_id}", headers=auth_headers)
+
+
+@pytest.mark.anyio
+async def test_cross_links_invalid_type(client: AsyncClient, auth_headers: dict):
+    """Test cross-linking with invalid entity type returns 400."""
+    resp = await client.get("/api/grc/cross-links/invalid_type/some-id", headers=auth_headers)
+    assert resp.status_code == 400
+
+
+# ── Phase G3: Dashboard with Action Center ──
+
+@pytest.mark.anyio
+async def test_grc_dashboard_includes_action_center(client: AsyncClient, auth_headers: dict):
+    """Test GRC dashboard includes action_center section."""
+    resp = await client.get("/api/grc/dashboard", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "action_center" in data
+    ac = data["action_center"]
+    assert "total" in ac
+    assert "open" in ac
+    assert "overdue" in ac
+    assert "completed" in ac
+    assert "by_priority" in ac
+    assert "by_source" in ac
+    assert "top_actions" in ac
+    assert isinstance(ac["top_actions"], list)
+    # Operating chain should include Action
+    assert "Action" in data["operating_chain"]
+
+
+# ── Phase G3: End-to-End Flow ──
+
+@pytest.mark.anyio
+async def test_g3_end_to_end_flow(client: AsyncClient, auth_headers: dict):
+    """Test full Phase G3 flow: create risk -> action -> complete -> dashboard."""
+    # 1. Create a risk
+    resp = await client.post("/api/grc/risks", json={
+        "title": "E2E Test Risk for G3",
+        "description": "Testing end-to-end action flow",
+        "category": "compliance",
+        "inherent_likelihood": "likely",
+        "inherent_impact": "major",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    risk_id = resp.json()["id"]
+
+    # 2. Create action linked to risk
+    resp = await client.post("/api/grc/actions", json={
+        "title": "Mitigate E2E Risk",
+        "title_ar": "معالجة مخاطر الاختبار الشامل",
+        "description": "Action to mitigate the identified risk",
+        "priority": "critical",
+        "source_type": "risk",
+        "source_id": risk_id,
+        "origin": "manual",
+        "owner": "Risk Manager",
+        "due_date": "2026-07-01T00:00:00",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    action = resp.json()
+    action_id = action["id"]
+    assert action["priority"] == "critical"
+    assert action["source_type"] == "risk"
+
+    # 3. Verify action appears in summary
+    resp = await client.get("/api/grc/actions/summary", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["total"] >= 1
+
+    # 4. Complete the action
+    resp = await client.put(f"/api/grc/actions/{action_id}", json={
+        "status": "completed",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "completed"
+
+    # 5. Verify dashboard includes action center
+    resp = await client.get("/api/grc/dashboard", headers=auth_headers)
+    assert resp.status_code == 200
+    assert "action_center" in resp.json()
+    assert resp.json()["action_center"]["completed"] >= 1
+
+    # 6. Generate narrative
+    resp = await client.post("/api/grc/narratives/generate", headers=auth_headers)
+    assert resp.status_code == 200
+    narrative = resp.json()
+    assert narrative["is_ai_generated"] is True
+    narrative_id = narrative["id"]
+
+    # Cleanup
+    await client.delete(f"/api/grc/narratives/{narrative_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/actions/{action_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/risks/{risk_id}", headers=auth_headers)
+
+
+@pytest.mark.anyio
+async def test_g3_bilingual_support(client: AsyncClient, auth_headers: dict):
+    """Test Phase G3 bilingual support for actions and narratives."""
+    # Create bilingual action
+    resp = await client.post("/api/grc/actions", json={
+        "title": "Bilingual Action Test",
+        "title_ar": "اختبار إجراء ثنائي اللغة",
+        "description": "English description",
+        "description_ar": "وصف بالعربية",
+        "reason": "English reason",
+        "reason_ar": "سبب بالعربية",
+        "priority": "medium",
+        "source_type": "manual",
+        "origin": "manual",
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    action = resp.json()
+    assert action["title"] == "Bilingual Action Test"
+    assert action["title_ar"] == "اختبار إجراء ثنائي اللغة"
+    assert action["description_ar"] == "وصف بالعربية"
+    assert action["reason_ar"] == "سبب بالعربية"
+    action_id = action["id"]
+
+    # Generate narrative (should have bilingual content)
+    resp = await client.post("/api/grc/narratives/generate", headers=auth_headers)
+    assert resp.status_code == 200
+    narrative = resp.json()
+    assert "content" in narrative
+    assert "content_ar" in narrative
+    assert narrative["is_ai_generated"] is True
+    narrative_id = narrative["id"]
+
+    # Cleanup
+    await client.delete(f"/api/grc/narratives/{narrative_id}", headers=auth_headers)
+    await client.delete(f"/api/grc/actions/{action_id}", headers=auth_headers)
