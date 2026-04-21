@@ -584,7 +584,7 @@ class RiskScoringService:
                 existing = await db.execute(
                     select(RegulatoryRisk).where(RegulatoryRisk.obligation_id == ob.id)
                 )
-                risk = existing.scalar_one_or_none()
+                risk = existing.scalars().first()
                 if risk:
                     risk.severity = score["severity"]
                     risk.likelihood = score["likelihood"]
