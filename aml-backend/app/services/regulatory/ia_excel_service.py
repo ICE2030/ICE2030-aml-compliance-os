@@ -50,8 +50,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.regulatory.source import (
     Regulator, Jurisdiction, RegulatoryDocument, Provision, ProvisionType,
-    Source, DocumentStatus,
+    Source, SourceVersion, DocumentStatus,
 )
+from app.models.base import generate_uuid
 from app.models.regulatory.obligation import (
     Obligation, ObligationType, ExtractionMethod, ReviewStatus,
 )
@@ -779,8 +780,35 @@ class IAExcelService:
             # New document — create full chain
             recon.new_documents.append(doc_title)
 
-            # Find the Source record for this document
+            # Find the Source record and link via SourceVersion for provenance
             source = await _find_source(db, regulator.id, doc_def["key"])
+            source_version_id = None
+            if source:
+                # Look up or create a SourceVersion so the document links
+                # back to Source (needed for risk scoring authority_level)
+                sv_result = await db.execute(
+                    select(SourceVersion).where(
+                        SourceVersion.source_id == source.id,
+                        SourceVersion.is_current == True,  # noqa: E712
+                    )
+                )
+                sv = sv_result.scalar_one_or_none()
+                if not sv:
+                    from datetime import datetime, timezone
+                    sv = SourceVersion(
+                        id=generate_uuid(),
+                        source_id=source.id,
+                        version_number=1,
+                        fetched_at=datetime.now(timezone.utc),
+                        content_hash=hashlib.sha256(
+                            f"ia_regulations.xlsx:{doc_def['key']}".encode()
+                        ).hexdigest(),
+                        is_current=True,
+                        parser_confidence=0.95,
+                    )
+                    db.add(sv)
+                    await db.flush()
+                source_version_id = sv.id
 
             doc = RegulatoryDocument(
                 title=doc_title,
@@ -790,6 +818,7 @@ class IAExcelService:
                 jurisdiction_id=jurisdiction.id,
                 language="ar+en",
                 status=DocumentStatus.ACTIVE,
+                source_version_id=source_version_id,
                 summary=f"Insurance Authority: {doc_def['title']}",
                 summary_ar=f"هيئة التأمين: {doc_def['title_ar']}",
                 metadata_extra={
