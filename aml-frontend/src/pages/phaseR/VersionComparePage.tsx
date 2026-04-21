@@ -47,7 +47,7 @@ export default function VersionComparePage() {
     setLoadingDocs(true);
     try {
       const res = await api.get('/api/regulatory/sources');
-      const docs = (res.data || []).map((s: { id: string; title: string; title_ar?: string }) => ({
+      const docs = (res.data?.items || []).map((s: { id: string; title: string; title_ar?: string }) => ({
         id: s.id,
         title: s.title,
         title_ar: s.title_ar,
