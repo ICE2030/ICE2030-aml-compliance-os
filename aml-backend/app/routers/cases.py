@@ -194,6 +194,12 @@ async def decide_case(
             ai_disposition=ai_disposition,
         )
     except Exception as e:
+        await db.rollback()
+        # Re-fetch the case after rollback since the previous instance is detached
+        result = await db.execute(select(Case).where(Case.id == case_id))
+        case = result.scalar_one_or_none()
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found after rollback")
         logger.warning(f"Failed to create DecisionCapture for case {case_id}: {e}")
 
     # Now update case fields (after capture_decision read the original values)
