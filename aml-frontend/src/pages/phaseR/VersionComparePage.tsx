@@ -46,11 +46,11 @@ export default function VersionComparePage() {
   const loadDocuments = useCallback(async () => {
     setLoadingDocs(true);
     try {
-      const res = await api.get('/api/regulatory/sources');
-      const docs = (res.data?.items || []).map((s: { id: string; title: string; title_ar?: string }) => ({
-        id: s.id,
-        title: s.title,
-        title_ar: s.title_ar,
+      const res = await api.get('/api/phase-r/documents');
+      const docs = (Array.isArray(res.data) ? res.data : []).map((d: { id: string; title: string; title_ar?: string }) => ({
+        id: d.id,
+        title: d.title,
+        title_ar: d.title_ar,
       }));
       setDocuments(docs);
     } catch { /* ignore */ }

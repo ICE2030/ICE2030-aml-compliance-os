@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.auth import get_current_user
+from app.models.user import User
 from app.services.regulatory.ia_excel_service import IAExcelService
 
 router = APIRouter(
@@ -23,6 +25,7 @@ router = APIRouter(
 async def seed_ia_regulations(
     force_update: bool = Query(False, description="If true, reconcile and report changes for existing documents"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Seed IA regulations from the bundled Excel file.
 
@@ -44,7 +47,10 @@ async def seed_ia_regulations(
 
 
 @router.get("/stats")
-async def get_ia_stats(db: AsyncSession = Depends(get_db)):
+async def get_ia_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Get current IA regulation statistics from the database."""
     try:
         return await IAExcelService.get_ia_stats(db)
@@ -53,7 +59,10 @@ async def get_ia_stats(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/reconcile")
-async def reconcile_ia_regulations(db: AsyncSession = Depends(get_db)):
+async def reconcile_ia_regulations(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Compare spreadsheet content against existing DB records.
 
     Read-only operation — does NOT modify any data.
@@ -71,6 +80,7 @@ async def reconcile_ia_regulations(db: AsyncSession = Depends(get_db)):
 async def parse_preview(
     sheet: Optional[str] = Query(None, description="Filter to a specific sheet name"),
     limit: int = Query(20, ge=1, le=200, description="Max rows per sheet"),
+    current_user: User = Depends(get_current_user),
 ):
     """Preview parsed and classified data from the Excel file without seeding.
 

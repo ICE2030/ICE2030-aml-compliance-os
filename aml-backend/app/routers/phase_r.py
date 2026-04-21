@@ -13,6 +13,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.core.auth import get_current_user
+from app.models.user import User
 from app.services.regulatory.phase_r_service import (
     ChangeDetectionService,
     ImpactPropagationService,
@@ -33,6 +35,7 @@ router = APIRouter(prefix="/api/phase-r", tags=["Phase R: Regulatory Maturity"])
 async def run_full_pipeline(
     regulator_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Run the full Phase R pipeline: baseline → detect → propagate → alert → freshness."""
     result = await PhaseROrchestrator.run_full_pipeline(db, regulator_id=regulator_id)
@@ -49,6 +52,7 @@ async def create_baseline_snapshots(
     regulator_id: Optional[str] = None,
     document_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Create baseline provision snapshots for future change detection."""
     result = await ChangeDetectionService.create_baseline_snapshots(
@@ -63,6 +67,7 @@ async def detect_changes(
     regulator_id: Optional[str] = None,
     document_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Detect provision changes by comparing against baseline snapshots."""
     result = await ChangeDetectionService.detect_changes(
@@ -76,6 +81,7 @@ async def detect_changes(
 async def detect_document_changes(
     regulator_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Detect new/removed documents for a regulator."""
     result = await ChangeDetectionService.detect_document_changes(db, regulator_id)
@@ -90,6 +96,7 @@ async def get_change_history(
     limit: int = 50,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get change history with optional filtering."""
     return await ChangeDetectionService.get_change_history(
@@ -110,6 +117,7 @@ async def get_change_history(
 async def propagate_change(
     change_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Propagate a single regulatory change to downstream records."""
     result = await ImpactPropagationService.propagate_change(db, change_id)
@@ -120,6 +128,7 @@ async def propagate_change(
 @router.post("/impacts/propagate-all")
 async def propagate_all_pending(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Propagate all pending changes that haven't been propagated yet."""
     result = await ImpactPropagationService.propagate_all_pending(db)
@@ -135,6 +144,7 @@ async def get_impacts(
     limit: int = 50,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get impact records with optional filtering."""
     return await ImpactPropagationService.get_impacts(
@@ -154,6 +164,7 @@ async def resolve_impact(
     resolved_by: str = "system",
     notes: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Resolve an impact record."""
     result = await ImpactPropagationService.resolve_impact(
@@ -175,6 +186,7 @@ async def get_alerts(
     limit: int = 50,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get regulatory alerts with optional filtering."""
     return await AlertingService.get_alerts(
@@ -192,6 +204,7 @@ async def acknowledge_alert(
     alert_id: str,
     acknowledged_by: str = "system",
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Acknowledge a regulatory alert."""
     result = await AlertingService.acknowledge_alert(db, alert_id, acknowledged_by)
@@ -203,6 +216,7 @@ async def acknowledge_alert(
 async def resolve_alert(
     alert_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Resolve a regulatory alert."""
     result = await AlertingService.resolve_alert(db, alert_id)
@@ -214,6 +228,7 @@ async def resolve_alert(
 async def dismiss_alert(
     alert_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Dismiss a regulatory alert."""
     result = await AlertingService.dismiss_alert(db, alert_id)
@@ -229,6 +244,7 @@ async def dismiss_alert(
 async def compute_freshness(
     regulator_id: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Compute freshness for a specific regulator or all regulators."""
     if regulator_id:
@@ -242,6 +258,7 @@ async def compute_freshness(
 @router.get("/freshness/dashboard")
 async def freshness_dashboard(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get freshness dashboard for all regulators."""
     return await FreshnessService.get_freshness_dashboard(db)
@@ -255,6 +272,7 @@ async def freshness_dashboard(
 async def compare_provision_versions(
     provision_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get all versions of a provision with diffs between each version."""
     return await VersionComparisonService.compare_provision_versions(db, provision_id)
@@ -264,6 +282,7 @@ async def compare_provision_versions(
 async def compare_document_versions(
     document_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Compare all provision changes within a document."""
     return await VersionComparisonService.compare_document_versions(db, document_id)
@@ -274,6 +293,7 @@ async def get_provision_at_version(
     provision_id: str,
     version_number: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific version of a provision."""
     result = await VersionComparisonService.get_provision_at_version(
@@ -285,12 +305,44 @@ async def get_provision_at_version(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 6. Documents listing (for version comparison UI)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/documents")
+async def list_documents(
+    regulator_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List regulatory documents for version comparison."""
+    from app.models.regulatory.source import RegulatoryDocument
+    stmt = select(RegulatoryDocument)
+    if regulator_id:
+        stmt = stmt.where(RegulatoryDocument.regulator_id == regulator_id)
+    stmt = stmt.order_by(RegulatoryDocument.title)
+    result = await db.execute(stmt)
+    docs = result.scalars().all()
+    return [
+        {
+            "id": d.id,
+            "title": d.title,
+            "title_ar": d.title_ar,
+            "document_type": d.document_type,
+            "regulator_id": d.regulator_id,
+            "status": d.status.value if hasattr(d.status, "value") else str(d.status),
+        }
+        for d in docs
+    ]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Dashboard / Summary
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/dashboard")
 async def phase_r_dashboard(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get Phase R summary dashboard."""
     from sqlalchemy import func as sqla_func
