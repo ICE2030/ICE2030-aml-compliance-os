@@ -23,6 +23,10 @@ import ControlSuggestionsPage from '@/pages/phase5a/ControlSuggestionsPage';
 import EvidenceAlertsPage from '@/pages/phase5a/EvidenceAlertsPage';
 import RiskTrendsDashboard from '@/pages/phase5b/RiskTrendsDashboard';
 import PatternDetectionPage from '@/pages/phase5b/PatternDetectionPage';
+import ChangeDetectionPage from '@/pages/phaseR/ChangeDetectionPage';
+import RegulatoryAlertsPage from '@/pages/phaseR/RegulatoryAlertsPage';
+import FreshnessDashboardPage from '@/pages/phaseR/FreshnessDashboardPage';
+import VersionComparePage from '@/pages/phaseR/VersionComparePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -183,6 +187,34 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <PatternDetectionPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/change-detection" element={
+        <ProtectedRoute>
+          <Layout>
+            <ChangeDetectionPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reg-alerts" element={
+        <ProtectedRoute>
+          <Layout>
+            <RegulatoryAlertsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/freshness" element={
+        <ProtectedRoute>
+          <Layout>
+            <FreshnessDashboardPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/version-compare" element={
+        <ProtectedRoute>
+          <Layout>
+            <VersionComparePage />
           </Layout>
         </ProtectedRoute>
       } />

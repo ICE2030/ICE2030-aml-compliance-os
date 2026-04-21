@@ -135,6 +135,7 @@ from app.routers import phase4
 from app.routers import phase5a
 from app.routers import phase5b
 from app.routers import ia_regulations
+from app.routers import phase_r
 
 app.include_router(auth.router)
 app.include_router(onboarding.router)
@@ -152,6 +153,7 @@ app.include_router(phase4.router)
 app.include_router(phase5a.router)
 app.include_router(phase5b.router)
 app.include_router(ia_regulations.router)
+app.include_router(phase_r.router)
 
 
 @app.get("/healthz")

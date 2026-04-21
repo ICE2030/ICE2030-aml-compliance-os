@@ -23,6 +23,13 @@ from app.models.regulatory.change import (
     ReviewDecision,
     QueryLog,
 )
+from app.models.regulatory.phase_r import (
+    ProvisionSnapshot,
+    RegulatoryChange,
+    ImpactRecord,
+    RegulatoryAlert,
+    RegulatorFreshness,
+)
 
 __all__ = [
     "Jurisdiction",
@@ -43,4 +50,9 @@ __all__ = [
     "ChangeEvent",
     "ReviewDecision",
     "QueryLog",
+    "ProvisionSnapshot",
+    "RegulatoryChange",
+    "ImpactRecord",
+    "RegulatoryAlert",
+    "RegulatorFreshness",
 ]
