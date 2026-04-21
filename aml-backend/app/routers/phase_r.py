@@ -10,6 +10,7 @@ Endpoints:
 """
 from typing import Optional
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.services.regulatory.phase_r_service import (
@@ -343,7 +344,6 @@ async def phase_r_dashboard(
         }
 
     # Change classification breakdown
-    from sqlalchemy import select as sqla_select
     class_result = await db.execute(
         select(
             RegulatoryChange.classification,
