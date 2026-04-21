@@ -299,7 +299,7 @@ class RuleBasedExtractor:
                     continue
                 overlap = len(token_sets[i] & token_sets[j])
                 union = len(token_sets[i] | token_sets[j]) or 1
-                if overlap / union >= 0.85:  # Jaccard similarity — truly same text
+                if overlap / union >= 0.80:  # Jaccard similarity — truly same text
                     # Keep the more specific one
                     spec_i = TYPE_SPECIFICITY.get(obligations[i].obligation_type, 0)
                     spec_j = TYPE_SPECIFICITY.get(obligations[j].obligation_type, 0)

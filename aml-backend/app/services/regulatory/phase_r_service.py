@@ -9,7 +9,10 @@ Services:
 5. VersionComparisonService — compare provision versions with diff
 """
 import hashlib
+import logging
 import difflib
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from sqlalchemy import select, func, and_
@@ -346,7 +349,12 @@ class ChangeDetectionService:
                 select(RegulatoryDocument).where(RegulatoryDocument.id == prov.document_id)
             )
             doc = doc_result.scalar_one_or_none()
-            reg_id = doc.regulator_id if doc else (regulator_id or "unknown")
+            reg_id = doc.regulator_id if doc else regulator_id
+            if not reg_id:
+                logger.warning(
+                    f"Document not found for provision {prov.id}, skipping change record"
+                )
+                continue
 
             summary = _generate_change_summary(
                 ChangeScope.PROVISION_MODIFIED,
