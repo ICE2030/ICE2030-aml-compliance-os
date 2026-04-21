@@ -31,6 +31,10 @@ class CaseType(str, enum.Enum):
     MANUAL_REFERRAL = "manual_referral"
     PERIODIC_REVIEW = "periodic_review"
     RISK_ESCALATION = "risk_escalation"
+    AML_REVIEW = "aml_review"
+    CDD_REVIEW = "cdd_review"
+    SANCTIONS_REVIEW = "sanctions_review"
+    STR_FILING = "str_filing"
 
 
 class Case(Base, TimestampMixin):

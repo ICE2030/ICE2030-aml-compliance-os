@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api/transactions", tags=["Transaction Monitoring"])
 
 
 @router.post("/", response_model=TransactionResponse)
+@router.post("", response_model=TransactionResponse, include_in_schema=False)
 async def create_transaction(
     data: TransactionCreate,
     current_user: User = Depends(get_current_user),
@@ -51,6 +52,7 @@ async def create_transaction(
 
 
 @router.get("/", response_model=list[TransactionResponse])
+@router.get("", response_model=list[TransactionResponse], include_in_schema=False)
 async def list_transactions(
     entity_id: str = Query(None),
     skip: int = 0,
