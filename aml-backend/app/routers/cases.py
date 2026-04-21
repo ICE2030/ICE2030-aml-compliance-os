@@ -209,10 +209,10 @@ async def decide_case(
                 id=generate_uuid(),
                 user_id=current_user.id,
                 interaction_type="case_decision",
-                entity_type="case",
-                entity_id=case_id,
+                resource_type="case",
+                resource_id=case_id,
                 action=f"decided_{decision.decision}",
-                details={
+                extra_data={
                     "decision": decision.decision,
                     "reasoning": decision.reasoning,
                     "confidence": decision.confidence_level,
