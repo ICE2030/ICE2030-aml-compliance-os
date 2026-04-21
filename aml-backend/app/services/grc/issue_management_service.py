@@ -21,15 +21,15 @@ logger = logging.getLogger(__name__)
 
 def _compute_aging_days(issue: Issue) -> int:
     """Compute days since issue was created (or until closure)."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     end = issue.closed_at or now
-    # Normalize to naive UTC for safe subtraction (SQLite may mix naive/aware)
-    if hasattr(end, 'tzinfo') and end.tzinfo is not None:
-        end = end.replace(tzinfo=None)
+    # Normalize to aware UTC for safe subtraction (SQLite may mix naive/aware)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
     start = issue.created_at
     if start:
-        if hasattr(start, 'tzinfo') and start.tzinfo is not None:
-            start = start.replace(tzinfo=None)
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
         return max(0, (end - start).days)
     return 0
 

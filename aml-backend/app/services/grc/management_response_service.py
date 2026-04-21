@@ -1,6 +1,6 @@
 """Management Response service — CRUD."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import select, func as sqla_func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,7 +59,7 @@ class ManagementResponseService:
         if "status" in data:
             resp.status = ResponseStatus(data["status"])
             if data["status"] == "completed" and not resp.completed_at:
-                resp.completed_at = datetime.utcnow()
+                resp.completed_at = datetime.now(timezone.utc)
         if "due_date" in data:
             resp.due_date = _parse_dt(data["due_date"])
 

@@ -1,6 +1,6 @@
 """Audit Finding service — CRUD and summary."""
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import select, func as sqla_func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,7 +69,7 @@ class AuditFindingService:
         if "status" in data:
             finding.status = FindingStatus(data["status"])
             if data["status"] == "closed" and not finding.closed_at:
-                finding.closed_at = datetime.utcnow()
+                finding.closed_at = datetime.now(timezone.utc)
         if "due_date" in data:
             finding.due_date = _parse_dt(data["due_date"])
         if "closure_validated_at" in data:
@@ -167,7 +167,7 @@ class AuditFindingService:
         overdue = (await db.execute(
             select(sqla_func.count()).select_from(AuditFinding).where(
                 AuditFinding.status.in_([FindingStatus.OPEN, FindingStatus.IN_REMEDIATION]),
-                AuditFinding.due_date < datetime.utcnow(),
+                AuditFinding.due_date < datetime.now(timezone.utc),
             )
         )).scalar() or 0
 
