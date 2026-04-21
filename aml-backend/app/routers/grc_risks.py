@@ -69,7 +69,7 @@ async def get_risk(risk_id: str, db: AsyncSession = Depends(get_db), current_use
     """Get a single enterprise risk."""
     result = await EnterpriseRiskService.get_risk(db, risk_id)
     if not result:
-        return {"error": "Risk not found"}
+        raise HTTPException(status_code=404, detail="Risk not found")
     return result
 
 

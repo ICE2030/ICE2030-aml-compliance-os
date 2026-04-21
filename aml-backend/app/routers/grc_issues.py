@@ -50,7 +50,7 @@ async def get_issue(issue_id: str, db: AsyncSession = Depends(get_db), current_u
     """Get a single issue."""
     result = await IssueManagementService.get_issue(db, issue_id)
     if not result:
-        return {"error": "Issue not found"}
+        raise HTTPException(status_code=404, detail="Issue not found")
     return result
 
 

@@ -48,7 +48,7 @@ async def get_action(action_id: str, db: AsyncSession = Depends(get_db), current
     """Get a single remediation action."""
     result = await RemediationService.get_action(db, action_id)
     if not result:
-        return {"error": "Action not found"}
+        raise HTTPException(status_code=404, detail="Action not found")
     return result
 
 
