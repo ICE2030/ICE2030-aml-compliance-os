@@ -15,6 +15,7 @@ from app.services.regulatory.phase_r_service import (
     _hash_text,
     _compute_provision_hash,
     _classify_change,
+    _text_has_binding_content,
     _generate_change_summary,
     _generate_diff_html,
     _suggest_obligation_action,
@@ -73,74 +74,101 @@ class TestContentHashing:
 class TestChangeClassification:
     """Test change classification logic based on text diff analysis."""
 
-    def test_new_obligation_is_material(self):
-        result = _classify_change(None, "New obligation text", None, "obligation")
+    def test_new_binding_provision_is_material(self):
+        """New provision with binding language (shall) → MATERIAL."""
+        result = _classify_change(None, "The company shall maintain AML records.", None, "article")
         assert result == ChangeClassification.MATERIAL
 
-    def test_new_prohibition_is_material(self):
-        result = _classify_change(None, "New prohibition text", None, "prohibition")
+    def test_new_prohibition_text_is_material(self):
+        """New provision with prohibition language → MATERIAL."""
+        result = _classify_change(None, "It is prohibited to process transactions without verification.", None, "clause")
         assert result == ChangeClassification.MATERIAL
 
-    def test_new_penalty_is_material(self):
-        result = _classify_change(None, "New penalty provision", None, "penalty")
+    def test_new_penalty_text_is_material(self):
+        """New provision with penalty language → MATERIAL."""
+        result = _classify_change(None, "A penalty of 100,000 SAR shall be imposed for violations.", None, "article")
         assert result == ChangeClassification.MATERIAL
 
-    def test_new_guidance_is_operational(self):
-        result = _classify_change(None, "New guidance text", None, "guidance")
+    def test_new_descriptive_provision_is_operational(self):
+        """New provision with no binding language → OPERATIONAL."""
+        result = _classify_change(None, "This chapter covers general compliance topics.", None, "chapter")
         assert result == ChangeClassification.OPERATIONAL
 
     def test_new_heading_is_operational(self):
-        result = _classify_change(None, "Chapter 5: Compliance", None, "heading")
+        result = _classify_change(None, "Chapter 5: Compliance", None, "chapter")
         assert result == ChangeClassification.OPERATIONAL
 
-    def test_removed_obligation_is_material(self):
-        result = _classify_change("Existing obligation text", None, "obligation", None)
+    def test_removed_binding_provision_is_material(self):
+        """Removed provision with binding language → MATERIAL."""
+        result = _classify_change("The company shall report suspicious transactions.", None, "article", None)
         assert result == ChangeClassification.MATERIAL
 
-    def test_removed_guidance_is_operational(self):
-        result = _classify_change("Existing guidance", None, "guidance", None)
+    def test_removed_descriptive_is_operational(self):
+        """Removed provision with no binding language → OPERATIONAL."""
+        result = _classify_change("General information about compliance.", None, "section", None)
         assert result == ChangeClassification.OPERATIONAL
 
     def test_identical_text_is_informational(self):
         text = "Companies shall maintain adequate records for a minimum of five years."
-        result = _classify_change(text, text, "obligation", "obligation")
+        result = _classify_change(text, text, "article", "article")
         assert result == ChangeClassification.INFORMATIONAL
 
     def test_trivial_change_is_informational(self):
         old = "Companies shall maintain adequate records for a minimum of five years."
         new = "Companies shall maintain adequate records for a minimum of five years"  # removed period
-        result = _classify_change(old, new, "obligation", "obligation")
+        result = _classify_change(old, new, "article", "article")
         assert result == ChangeClassification.INFORMATIONAL
 
     def test_rewording_is_interpretive(self):
         old = "The company shall implement customer due diligence procedures."
         new = "The company must implement customer due diligence measures and procedures."
-        result = _classify_change(old, new, "obligation", "obligation")
+        result = _classify_change(old, new, "article", "article")
         assert result == ChangeClassification.INTERPRETIVE
 
-    def test_significant_change_is_operational(self):
+    def test_significant_binding_change_is_material(self):
+        """Significant change in binding text (must) → MATERIAL."""
         old = "Reports must be submitted quarterly."
         new = "Reports must be submitted monthly with detailed breakdown by category and risk level."
-        result = _classify_change(old, new, "reporting", "reporting")
-        assert result in (ChangeClassification.OPERATIONAL, ChangeClassification.MATERIAL)
+        result = _classify_change(old, new, "article", "article")
+        assert result == ChangeClassification.MATERIAL
+
+    def test_significant_nonbinding_change_is_operational(self):
+        """Significant change in non-binding text → OPERATIONAL."""
+        old = "This section covers reporting timelines."
+        new = "This section covers monthly reporting timelines with detailed breakdown by category."
+        result = _classify_change(old, new, "section", "section")
+        assert result == ChangeClassification.OPERATIONAL
 
     def test_major_rewrite_is_material(self):
-        old = "Basic customer identification required."
-        new = "Enhanced due diligence including beneficial ownership verification, source of funds documentation, and ongoing monitoring for all high-risk customers."
-        result = _classify_change(old, new, "obligation", "obligation")
+        old = "Basic customer identification."
+        new = "Enhanced due diligence including beneficial ownership verification, source of funds documentation, and ongoing monitoring."
+        result = _classify_change(old, new, "article", "article")
         assert result == ChangeClassification.MATERIAL
 
-    def test_type_change_to_obligation_is_material(self):
-        result = _classify_change("Some text", "Some text", "guidance", "obligation")
+    def test_type_change_with_binding_content_is_material(self):
+        """Provision type changes and new text has binding language → MATERIAL."""
+        result = _classify_change("Some text", "The company shall comply with all requirements.", "section", "article")
         assert result == ChangeClassification.MATERIAL
 
-    def test_type_change_to_prohibition_is_material(self):
-        result = _classify_change("Some text", "Some text", "guidance", "prohibition")
-        assert result == ChangeClassification.MATERIAL
-
-    def test_type_change_guidance_to_heading_is_operational(self):
-        result = _classify_change("Some text", "Some text", "guidance", "heading")
+    def test_type_change_nonbinding_is_operational(self):
+        """Provision type changes but text is non-binding → OPERATIONAL."""
+        result = _classify_change("Some text", "Some descriptive text", "section", "clause")
         assert result == ChangeClassification.OPERATIONAL
+
+    def test_binding_content_detection(self):
+        """Test the _text_has_binding_content helper directly."""
+        assert _text_has_binding_content("The company shall maintain records.") is True
+        assert _text_has_binding_content("Entities must report to the authority.") is True
+        assert _text_has_binding_content("It is prohibited to transfer funds.") is True
+        assert _text_has_binding_content("A penalty of 50,000 SAR applies.") is True
+        assert _text_has_binding_content("This chapter provides an overview.") is False
+        assert _text_has_binding_content("Chapter 5: Definitions") is False
+
+    def test_arabic_binding_content_detection(self):
+        """Test Arabic binding content detection."""
+        assert _text_has_binding_content("يجب على الشركات الالتزام بالمتطلبات") is True
+        assert _text_has_binding_content("يحظر التعامل مع الجهات غير المرخصة") is True
+        assert _text_has_binding_content("الفصل الخامس: أحكام عامة") is False
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -438,8 +466,8 @@ class TestIdempotency:
         """Running classification twice with same inputs gives same result."""
         old = "The company shall verify customer identity."
         new = "The company must verify customer identity and documents."
-        r1 = _classify_change(old, new, "obligation", "obligation")
-        r2 = _classify_change(old, new, "obligation", "obligation")
+        r1 = _classify_change(old, new, "article", "article")
+        r2 = _classify_change(old, new, "article", "article")
         assert r1 == r2
 
     def test_hash_deterministic(self):
@@ -480,7 +508,7 @@ class TestEdgeCases:
         assert result in (ChangeClassification.OPERATIONAL, ChangeClassification.MATERIAL)
 
     def test_classify_empty_strings(self):
-        result = _classify_change("", "", "heading", "heading")
+        result = _classify_change("", "", "chapter", "chapter")
         assert result == ChangeClassification.INFORMATIONAL
 
     def test_summary_no_section(self):
@@ -500,7 +528,7 @@ class TestEdgeCases:
     def test_classify_arabic_text(self):
         old = "يجب على الشركات الالتزام"
         new = "يجب على جميع الشركات الالتزام الكامل بالمتطلبات"
-        result = _classify_change(old, new, "obligation", "obligation")
+        result = _classify_change(old, new, "article", "article")
         assert result in (
             ChangeClassification.INTERPRETIVE,
             ChangeClassification.OPERATIONAL,

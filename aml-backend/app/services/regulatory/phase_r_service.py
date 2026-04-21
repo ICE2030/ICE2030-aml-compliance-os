@@ -58,31 +58,69 @@ def _compute_provision_hash(prov: Provision) -> str:
     return _hash_text(combined)
 
 
+def _text_has_binding_content(text: Optional[str]) -> bool:
+    """Check if text contains binding/material regulatory language (EN or AR).
+
+    Detects obligation, prohibition, penalty, and reporting keywords that
+    indicate the provision carries binding regulatory weight — regardless
+    of the provision_type stored in the DB (which is structural, e.g.
+    "article", "section", "clause").
+    """
+    if not text:
+        return False
+    lower = text.lower()
+    # English binding indicators
+    en_patterns = (
+        "shall ", "must ", "shall not ", "must not ", "may not ",
+        "is required", "are required", "is prohibited", "are prohibited",
+        "penalty", "fine ", "fined ", "sanction", "violation",
+        "imprisonment", "report to", "notify the", "file a report",
+        "submit to", "obligat",  # obligation, obligatory, obligated
+    )
+    # Arabic binding indicators
+    ar_patterns = (
+        "يجب", "يلتزم", "يحظر", "لا يجوز", "غرامة", "عقوبة",
+        "مخالفة", "يُبلغ", "يقدم تقرير", "إلزام",
+    )
+    for p in en_patterns:
+        if p in lower:
+            return True
+    for p in ar_patterns:
+        if p in text:
+            return True
+    return False
+
+
 def _classify_change(
     old_text: Optional[str],
     new_text: Optional[str],
     old_type: Optional[str],
     new_type: Optional[str],
 ) -> ChangeClassification:
-    """Classify a provision change based on content diff analysis."""
+    """Classify a provision change based on content diff analysis.
+
+    Note: old_type/new_type are provision_type values (e.g. "article",
+    "section", "clause") — NOT obligation types. We use text content
+    analysis to detect binding/material provisions.
+    """
     if old_text is None:
-        # New provision
-        if new_type and new_type in ("obligation", "prohibition", "penalty", "reporting"):
+        # New provision — check if text contains binding content
+        if _text_has_binding_content(new_text):
             return ChangeClassification.MATERIAL
         return ChangeClassification.OPERATIONAL
 
     if new_text is None:
-        # Removed provision
-        if old_type and old_type in ("obligation", "prohibition", "penalty", "reporting"):
+        # Removed provision — check if removed text was binding
+        if _text_has_binding_content(old_text):
             return ChangeClassification.MATERIAL
         return ChangeClassification.OPERATIONAL
 
     old_lower = (old_text or "").lower().strip()
     new_lower = (new_text or "").lower().strip()
 
-    # Check if type changed (e.g., guidance -> obligation)
+    # Check if provision type changed structurally
     if old_type != new_type:
-        if new_type in ("obligation", "prohibition", "penalty", "reporting"):
+        if _text_has_binding_content(new_text):
             return ChangeClassification.MATERIAL
         return ChangeClassification.OPERATIONAL
 
@@ -94,7 +132,10 @@ def _classify_change(
     if ratio >= 0.85:
         return ChangeClassification.INTERPRETIVE  # rewording
     if ratio >= 0.5:
-        return ChangeClassification.OPERATIONAL  # significant change
+        # Significant change — check if content is binding for severity
+        if _text_has_binding_content(new_text):
+            return ChangeClassification.MATERIAL
+        return ChangeClassification.OPERATIONAL
 
     # Major rewrite
     return ChangeClassification.MATERIAL
