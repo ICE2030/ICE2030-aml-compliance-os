@@ -2,8 +2,8 @@ export type Language = 'en' | 'ar';
 
 export const translations: Record<Language, Record<string, string>> = {
   en: {
-    'app.title': 'AML Compliance OS',
-    'app.subtitle': 'Anti-Money Laundering & Compliance Operating System',
+    'app.title': 'GRC Intelligence OS',
+    'app.subtitle': 'Regulatory Intelligence-Driven GRC Operating System',
     'nav.dashboard': 'Dashboard',
     'nav.onboarding': 'Onboarding',
     'nav.screening': 'Screening',
@@ -526,10 +526,14 @@ export const translations: Record<Language, Record<string, string>> = {
     'pr.all_classifications': 'All Classifications',
     'pr.dashboard_title': 'Phase R Dashboard',
     'pr.impacts_pending': 'Impacts Pending Review',
+    'nav.grc_dashboard': 'GRC Command Center',
+    'nav.risk_register': 'Risk Register',
+    'nav.issue_management': 'Issue Management',
+    'nav.remediation': 'Remediation',
   },
   ar: {
-    'app.title': 'نظام الامتثال لمكافحة غسل الأموال',
-    'app.subtitle': 'نظام تشغيل مكافحة غسل الأموال والامتثال',
+    'app.title': 'نظام حوكمة المخاطر والامتثال',
+    'app.subtitle': 'نظام تشغيل الحوكمة والمخاطر والامتثال القائم على الذكاء التنظيمي',
     'nav.dashboard': 'لوحة المعلومات',
     'nav.onboarding': 'التسجيل',
     'nav.screening': 'الفحص',
@@ -1052,5 +1056,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'pr.all_classifications': 'جميع التصنيفات',
     'pr.dashboard_title': 'لوحة المرحلة R',
     'pr.impacts_pending': 'التأثيرات بانتظار المراجعة',
+    'nav.grc_dashboard': 'مركز قيادة الحوكمة',
+    'nav.risk_register': 'سجل المخاطر',
+    'nav.issue_management': 'إدارة المشاكل',
+    'nav.remediation': 'الإجراءات العلاجية',
   },
 };

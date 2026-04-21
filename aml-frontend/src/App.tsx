@@ -27,6 +27,10 @@ import ChangeDetectionPage from '@/pages/phaseR/ChangeDetectionPage';
 import RegulatoryAlertsPage from '@/pages/phaseR/RegulatoryAlertsPage';
 import FreshnessDashboardPage from '@/pages/phaseR/FreshnessDashboardPage';
 import VersionComparePage from '@/pages/phaseR/VersionComparePage';
+import GRCDashboardPage from '@/pages/grc/GRCDashboardPage';
+import RiskRegisterPage from '@/pages/grc/RiskRegisterPage';
+import IssueManagementPage from '@/pages/grc/IssueManagementPage';
+import RemediationPage from '@/pages/grc/RemediationPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -215,6 +219,34 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <VersionComparePage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc" element={
+        <ProtectedRoute>
+          <Layout>
+            <GRCDashboardPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/risks" element={
+        <ProtectedRoute>
+          <Layout>
+            <RiskRegisterPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/issues" element={
+        <ProtectedRoute>
+          <Layout>
+            <IssueManagementPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/remediation" element={
+        <ProtectedRoute>
+          <Layout>
+            <RemediationPage />
           </Layout>
         </ProtectedRoute>
       } />

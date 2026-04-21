@@ -6,6 +6,7 @@ import {
   Briefcase, FileText, BarChart3, LogOut, Globe, ChevronLeft, ChevronRight, Menu, BookOpen,
   Search, ClipboardCheck, Brain, ShieldCheck, FileCheck, Target, PieChart,
   Lightbulb, Bell, TrendingUp, SearchCode, GitCompare, BellRing, Activity, Layers,
+  Gauge, ShieldAlert, AlertOctagon, Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -35,6 +36,10 @@ const navItems = [
   { key: 'nav.reg_alerts', path: '/reg-alerts', icon: BellRing },
   { key: 'nav.freshness', path: '/freshness', icon: Activity },
   { key: 'nav.version_compare', path: '/version-compare', icon: Layers },
+  { key: 'nav.grc_dashboard', path: '/grc', icon: Gauge },
+  { key: 'nav.risk_register', path: '/grc/risks', icon: ShieldAlert },
+  { key: 'nav.issue_management', path: '/grc/issues', icon: AlertOctagon },
+  { key: 'nav.remediation', path: '/grc/remediation', icon: Wrench },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -50,7 +55,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="p-4 border-b border-slate-700 flex items-center justify-between">
           {!collapsed && (
             <div>
-              <h1 className="font-bold text-lg">AML-OS</h1>
+              <h1 className="font-bold text-lg">GRC-OS</h1>
               <p className="text-xs text-slate-400">{t('app.subtitle')}</p>
             </div>
           )}
