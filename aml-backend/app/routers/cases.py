@@ -202,6 +202,29 @@ async def decide_case(
             raise HTTPException(status_code=404, detail="Case not found after rollback")
         logger.warning(f"Failed to create DecisionCapture for case {case_id}: {e}")
 
+        # Fallback: create Interaction record so the analytics/loop pipeline
+        # always has a record of the decision even when DecisionCapture fails.
+        try:
+            fallback_interaction = Interaction(
+                id=generate_uuid(),
+                user_id=current_user.id,
+                interaction_type="case_decision",
+                entity_type="case",
+                entity_id=case_id,
+                action=f"decided_{decision.decision}",
+                details={
+                    "decision": decision.decision,
+                    "reasoning": decision.reasoning,
+                    "confidence": decision.confidence_level,
+                    "ai_suggestion_accepted": decision.ai_suggestion_accepted,
+                    "fallback": True,
+                },
+            )
+            db.add(fallback_interaction)
+            await db.flush()
+        except Exception as e2:
+            logger.warning(f"Failed to create fallback Interaction for case {case_id}: {e2}")
+
     # Now update case fields (after capture_decision read the original values)
     case.decision = decision.decision
     case.decision_reasoning = decision.reasoning
