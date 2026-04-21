@@ -9,7 +9,7 @@ Endpoints:
 6. Orchestrator — run full pipeline
 """
 from typing import Optional
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
@@ -121,6 +121,8 @@ async def propagate_change(
 ):
     """Propagate a single regulatory change to downstream records."""
     result = await ImpactPropagationService.propagate_change(db, change_id)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -170,6 +172,8 @@ async def resolve_impact(
     result = await ImpactPropagationService.resolve_impact(
         db, impact_id, status=status, resolved_by=resolved_by, notes=notes
     )
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -208,6 +212,8 @@ async def acknowledge_alert(
 ):
     """Acknowledge a regulatory alert."""
     result = await AlertingService.acknowledge_alert(db, alert_id, acknowledged_by)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -220,6 +226,8 @@ async def resolve_alert(
 ):
     """Resolve a regulatory alert."""
     result = await AlertingService.resolve_alert(db, alert_id)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -232,6 +240,8 @@ async def dismiss_alert(
 ):
     """Dismiss a regulatory alert."""
     result = await AlertingService.dismiss_alert(db, alert_id)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -300,7 +310,7 @@ async def get_provision_at_version(
         db, provision_id, version_number
     )
     if not result:
-        return {"error": "Version not found"}
+        raise HTTPException(status_code=404, detail="Version not found")
     return result
 
 
