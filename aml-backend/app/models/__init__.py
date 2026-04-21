@@ -7,6 +7,7 @@ from app.models.case import Case, CaseNote, CasePriority, CaseStatus, CaseType
 from app.models.audit import AuditLog
 from app.models.interaction import Interaction, LoopMetric, PatternDetection
 from app.models.intelligence import DecisionCapture, CaseMemoryEntry, IntelligenceMetric, CaseCluster
+from app.models.compliance_snapshot import ComplianceSnapshot, CompliancePattern
 
 __all__ = [
     "User", "Organization", "UserRole",
@@ -18,4 +19,5 @@ __all__ = [
     "AuditLog",
     "Interaction", "LoopMetric", "PatternDetection",
     "DecisionCapture", "CaseMemoryEntry", "IntelligenceMetric", "CaseCluster",
+    "ComplianceSnapshot", "CompliancePattern",
 ]
