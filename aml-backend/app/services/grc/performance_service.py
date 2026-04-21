@@ -43,7 +43,7 @@ class PerformanceService:
         ("idx_engagements_status", "grc_audit_engagements", "status"),
         ("idx_engagements_plan", "grc_audit_engagements", "plan_id"),
         # Control tests
-        ("idx_ctests_result", "grc_control_tests", "result"),
+        ("idx_ctests_result", "grc_control_tests", "overall_result"),
         ("idx_ctests_engagement", "grc_control_tests", "engagement_id"),
         # Risk snapshots
         ("idx_snapshots_risk", "grc_risk_snapshots", "risk_id"),
