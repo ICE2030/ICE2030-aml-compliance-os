@@ -211,7 +211,7 @@ async def decide_case(
                 interaction_type="case_decision",
                 resource_type="case",
                 resource_id=case_id,
-                action=f"decided_{decision.decision}",
+                action=f"decide_{decision.decision}",
                 extra_data={
                     "decision": decision.decision,
                     "reasoning": decision.reasoning,
