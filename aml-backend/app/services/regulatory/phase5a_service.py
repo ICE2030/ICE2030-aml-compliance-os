@@ -576,7 +576,7 @@ class ImprovedExtractionService:
 
         deleted_count = 0
         if force:
-            await db.execute(sql_delete(ReviewDecision))
+            await db.execute(sql_delete(ReviewDecision).where(ReviewDecision.content_type == "obligation"))
             # Also clean obligation-control mappings and referencing records
             from app.models.regulatory.obligation import RegulatoryRisk, RegulatoryAction
             await db.execute(sql_delete(RegulatoryAction))
