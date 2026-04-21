@@ -65,6 +65,19 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
     return dot / (norm_a * norm_b)
 
 
+def _best_resolution_seconds(capture: "DecisionCapture") -> Optional[int]:
+    """Return the best available resolution time in seconds.
+
+    Prefers investigation_time + review_time (explicit user-reported breakdown)
+    over the computed time_to_decision_seconds (wall-clock from case creation).
+    """
+    inv = capture.investigation_time_seconds or 0
+    rev = capture.review_time_seconds or 0
+    if inv or rev:
+        return inv + rev
+    return capture.time_to_decision_seconds
+
+
 # ---------------------------------------------------------------------------
 # Decision Capture Service
 # ---------------------------------------------------------------------------
@@ -365,7 +378,7 @@ class CaseMemoryService:
             # Hybrid score: 60% semantic + 40% structured
             hybrid_score = 0.6 * semantic_score + 0.4 * structured_sim
 
-            if hybrid_score > 0.05:  # threshold
+            if hybrid_score > 0.15:  # threshold (raised from 0.05 to filter noise)
                 # Load case details
                 c_result = await db.execute(select(Case).where(Case.id == memory.case_id))
                 c = c_result.scalar_one_or_none()
@@ -471,17 +484,20 @@ class IntelligenceLoopService:
 
     @staticmethod
     async def compute_efficiency_loop(db: AsyncSession) -> dict:
-        """Efficiency loop: resolution time, per-step breakdown."""
-        # From decision captures (richer timing data)
-        captures_result = await db.execute(
-            select(DecisionCapture).where(
-                DecisionCapture.time_to_decision_seconds.isnot(None)
-            )
-        )
-        captures = list(captures_result.scalars().all())
+        """Efficiency loop: resolution time, per-step breakdown.
+
+        Uses _best_resolution_seconds() which prefers the explicit
+        investigation_time + review_time breakdown over wall-clock
+        time_to_decision_seconds.
+        """
+        captures_result = await db.execute(select(DecisionCapture))
+        all_captures = list(captures_result.scalars().all())
+
+        # Filter to captures that have *some* timing data
+        captures = [c for c in all_captures if _best_resolution_seconds(c)]
 
         if captures:
-            times = [c.time_to_decision_seconds for c in captures if c.time_to_decision_seconds]
+            times = [_best_resolution_seconds(c) for c in captures]
             avg_total = round(sum(times) / len(times) / 60, 1) if times else 0.0
 
             inv_times = [c.investigation_time_seconds for c in captures if c.investigation_time_seconds]
@@ -500,16 +516,16 @@ class IntelligenceLoopService:
             avg_investigation = 0.0
             avg_review = 0.0
 
-        # By case type
-        type_result = await db.execute(
-            select(
-                DecisionCapture.case_type,
-                func.avg(DecisionCapture.time_to_decision_seconds),
-            ).where(
-                DecisionCapture.time_to_decision_seconds.isnot(None)
-            ).group_by(DecisionCapture.case_type)
-        )
-        by_type = {row[0]: round((row[1] or 0) / 60, 1) for row in type_result.all() if row[0]}
+        # By case type — also use _best_resolution_seconds
+        by_type: dict[str, float] = {}
+        type_groups: dict[str, list[int]] = defaultdict(list)
+        for c in captures:
+            if c.case_type:
+                t = _best_resolution_seconds(c)
+                if t:
+                    type_groups[c.case_type].append(t)
+        for ctype, ts in type_groups.items():
+            by_type[ctype] = round(sum(ts) / len(ts) / 60, 1)
 
         return {
             "avg_resolution_minutes": avg_total,
@@ -750,13 +766,15 @@ class OutcomeDashboardService:
         eff_loop = await IntelligenceLoopService.compute_efficiency_loop(db)
 
         # Resolution trend (aggregate by decision date — use daily buckets)
+        # Use investigation_time + review_time when available; fall back to time_to_decision_seconds
         resolution_trend = []
         if all_captures:
             by_day: dict[str, list[int]] = defaultdict(list)
             for c in all_captures:
-                if c.time_to_decision_seconds and c.created_at:
+                elapsed = _best_resolution_seconds(c)
+                if elapsed and c.created_at:
                     day = c.created_at.strftime("%Y-%m-%d") if hasattr(c.created_at, "strftime") else str(c.created_at)[:10]
-                    by_day[day].append(c.time_to_decision_seconds)
+                    by_day[day].append(elapsed)
             for day in sorted(by_day.keys()):
                 times = by_day[day]
                 resolution_trend.append({

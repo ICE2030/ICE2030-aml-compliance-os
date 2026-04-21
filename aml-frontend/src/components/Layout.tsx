@@ -4,7 +4,10 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, Users, Shield, AlertTriangle, CreditCard,
   Briefcase, FileText, BarChart3, LogOut, Globe, ChevronLeft, ChevronRight, Menu, BookOpen,
-  Search, ClipboardCheck, Brain,
+  Search, ClipboardCheck, Brain, ShieldCheck, FileCheck, Target, PieChart,
+  Lightbulb, Bell, TrendingUp, SearchCode, GitCompare, BellRing, Activity, Layers,
+  Gauge, ShieldAlert, AlertOctagon, Wrench, ClipboardList, Search as SearchIcon, CheckCircle, AlertTriangle as AlertTriangleIcon2,
+  Zap, FileText as FileTextIcon2, Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -22,6 +25,29 @@ const navItems = [
   { key: 'nav.reg_search', path: '/reg-search', icon: Search },
   { key: 'nav.review_queue', path: '/review-queue', icon: ClipboardCheck },
   { key: 'nav.intelligence', path: '/intelligence', icon: Brain },
+  { key: 'nav.controls', path: '/controls', icon: ShieldCheck },
+  { key: 'nav.evidence', path: '/evidence', icon: FileCheck },
+  { key: 'nav.gap_analysis', path: '/gap-analysis', icon: Target },
+  { key: 'nav.exec_report', path: '/executive-report', icon: PieChart },
+  { key: 'nav.control_suggestions', path: '/control-suggestions', icon: Lightbulb },
+  { key: 'nav.evidence_alerts', path: '/evidence-alerts', icon: Bell },
+  { key: 'nav.risk_trends', path: '/risk-trends', icon: TrendingUp },
+  { key: 'nav.pattern_detection', path: '/pattern-detection', icon: SearchCode },
+  { key: 'nav.change_detection', path: '/change-detection', icon: GitCompare },
+  { key: 'nav.reg_alerts', path: '/reg-alerts', icon: BellRing },
+  { key: 'nav.freshness', path: '/freshness', icon: Activity },
+  { key: 'nav.version_compare', path: '/version-compare', icon: Layers },
+  { key: 'nav.grc_dashboard', path: '/grc', icon: Gauge },
+  { key: 'nav.risk_register', path: '/grc/risks', icon: ShieldAlert },
+  { key: 'nav.issue_management', path: '/grc/issues', icon: AlertOctagon },
+  { key: 'nav.remediation', path: '/grc/remediation', icon: Wrench },
+  { key: 'nav.audit_plans', path: '/grc/audit-plans', icon: ClipboardList },
+  { key: 'nav.audit_engagements', path: '/grc/audit-engagements', icon: SearchIcon },
+  { key: 'nav.control_tests', path: '/grc/control-tests', icon: CheckCircle },
+  { key: 'nav.audit_findings', path: '/grc/audit-findings', icon: AlertTriangleIcon2 },
+  { key: 'nav.action_center', path: '/grc/actions', icon: Zap },
+  { key: 'nav.narratives', path: '/grc/narratives', icon: FileTextIcon2 },
+  { key: 'nav.admin', path: '/grc/admin', icon: Settings },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -37,7 +63,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="p-4 border-b border-slate-700 flex items-center justify-between">
           {!collapsed && (
             <div>
-              <h1 className="font-bold text-lg">AML-OS</h1>
+              <h1 className="font-bold text-lg">GRC-OS</h1>
               <p className="text-xs text-slate-400">{t('app.subtitle')}</p>
             </div>
           )}
