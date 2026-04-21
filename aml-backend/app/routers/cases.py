@@ -212,11 +212,13 @@ async def decide_case(
                 resource_type="case",
                 resource_id=case_id,
                 action=f"decide_{decision.decision}",
+                decision=decision.decision,
+                reasoning=decision.reasoning,
+                confidence_level=decision.confidence_level,
+                time_to_decision_seconds=time_to_decision * 60 if time_to_decision else None,
+                ai_suggestion_given=case.ai_suggestion,
+                ai_suggestion_accepted=decision.ai_suggestion_accepted,
                 extra_data={
-                    "decision": decision.decision,
-                    "reasoning": decision.reasoning,
-                    "confidence": decision.confidence_level,
-                    "ai_suggestion_accepted": decision.ai_suggestion_accepted,
                     "fallback": True,
                 },
             )

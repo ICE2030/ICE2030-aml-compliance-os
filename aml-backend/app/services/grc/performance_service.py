@@ -70,7 +70,7 @@ class PerformanceService:
                 else:
                     errors.append({"index": idx_name, "error": err_msg})
 
-        await db.commit()
+        await db.flush()
 
         return {
             "total_indexes": len(PerformanceService.RECOMMENDED_INDEXES),
