@@ -415,8 +415,8 @@ async def test_remediation_invalid_issue(client: AsyncClient, auth_headers: dict
         "title": "Test Action",
         "description": "Should fail",
     }, headers=auth_headers)
-    assert resp.status_code == 200
-    assert "error" in resp.json()
+    assert resp.status_code == 404
+    assert "detail" in resp.json()
 
 
 # ── GRC Dashboard ──

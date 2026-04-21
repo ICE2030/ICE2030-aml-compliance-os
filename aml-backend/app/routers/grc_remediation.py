@@ -1,5 +1,5 @@
 """Remediation & Action Tracking API endpoints."""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
@@ -14,6 +14,8 @@ router = APIRouter(prefix="/api/grc/remediation", tags=["GRC - Remediation"])
 async def create_action(data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Create a new remediation action."""
     result = await RemediationService.create_action(db, data)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -54,6 +56,8 @@ async def get_action(action_id: str, db: AsyncSession = Depends(get_db), current
 async def update_action(action_id: str, data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Update a remediation action."""
     result = await RemediationService.update_action(db, action_id, data)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -62,6 +66,8 @@ async def update_action(action_id: str, data: dict, db: AsyncSession = Depends(g
 async def delete_action(action_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Delete a remediation action."""
     result = await RemediationService.delete_action(db, action_id)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -72,6 +78,8 @@ async def delete_action(action_id: str, db: AsyncSession = Depends(get_db), curr
 async def create_milestone(action_id: str, data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Create a milestone within a remediation action."""
     result = await RemediationService.create_milestone(db, action_id, data)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -86,6 +94,8 @@ async def list_milestones(action_id: str, db: AsyncSession = Depends(get_db), cu
 async def update_milestone(milestone_id: str, data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Update a milestone."""
     result = await RemediationService.update_milestone(db, milestone_id, data)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -94,5 +104,7 @@ async def update_milestone(milestone_id: str, data: dict, db: AsyncSession = Dep
 async def delete_milestone(milestone_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Delete a milestone."""
     result = await RemediationService.delete_milestone(db, milestone_id)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result

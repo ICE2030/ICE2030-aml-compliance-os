@@ -1,5 +1,5 @@
 """Issue Management API endpoints."""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
@@ -58,6 +58,8 @@ async def get_issue(issue_id: str, db: AsyncSession = Depends(get_db), current_u
 async def update_issue(issue_id: str, data: dict, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Update an issue."""
     result = await IssueManagementService.update_issue(db, issue_id, data)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
 
@@ -66,5 +68,7 @@ async def update_issue(issue_id: str, data: dict, db: AsyncSession = Depends(get
 async def delete_issue(issue_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Delete an issue."""
     result = await IssueManagementService.delete_issue(db, issue_id)
+    if isinstance(result, dict) and "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
     await db.commit()
     return result
