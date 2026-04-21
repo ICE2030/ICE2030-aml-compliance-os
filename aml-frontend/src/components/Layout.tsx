@@ -4,7 +4,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import {
   LayoutDashboard, Users, Shield, AlertTriangle, CreditCard,
   Briefcase, FileText, BarChart3, LogOut, Globe, ChevronLeft, ChevronRight, Menu, BookOpen,
-  Search, ClipboardCheck, Brain,
+  Search, ClipboardCheck, Brain, ShieldCheck, FileCheck, Target, PieChart,
+  Lightbulb, Bell, TrendingUp, SearchCode, GitCompare, BellRing, Activity, Layers,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -22,6 +23,18 @@ const navItems = [
   { key: 'nav.reg_search', path: '/reg-search', icon: Search },
   { key: 'nav.review_queue', path: '/review-queue', icon: ClipboardCheck },
   { key: 'nav.intelligence', path: '/intelligence', icon: Brain },
+  { key: 'nav.controls', path: '/controls', icon: ShieldCheck },
+  { key: 'nav.evidence', path: '/evidence', icon: FileCheck },
+  { key: 'nav.gap_analysis', path: '/gap-analysis', icon: Target },
+  { key: 'nav.exec_report', path: '/executive-report', icon: PieChart },
+  { key: 'nav.control_suggestions', path: '/control-suggestions', icon: Lightbulb },
+  { key: 'nav.evidence_alerts', path: '/evidence-alerts', icon: Bell },
+  { key: 'nav.risk_trends', path: '/risk-trends', icon: TrendingUp },
+  { key: 'nav.pattern_detection', path: '/pattern-detection', icon: SearchCode },
+  { key: 'nav.change_detection', path: '/change-detection', icon: GitCompare },
+  { key: 'nav.reg_alerts', path: '/reg-alerts', icon: BellRing },
+  { key: 'nav.freshness', path: '/freshness', icon: Activity },
+  { key: 'nav.version_compare', path: '/version-compare', icon: Layers },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
