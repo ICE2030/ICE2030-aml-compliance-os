@@ -172,7 +172,7 @@ export default function ReviewQueuePage() {
       rejected: { variant: 'danger', label: t('review.rejected') },
       needs_revision: { variant: 'info', label: t('review.needs_revision') },
     };
-    const config = map[status] || { variant: 'secondary' as any, label: status };
+    const config = map[status] || { variant: 'info' as const, label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 

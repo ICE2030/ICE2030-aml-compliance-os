@@ -62,7 +62,7 @@ export default function EvidencePage() {
 
   useEffect(() => {
     api.get('/api/phase4/controls', { params: { limit: 200 } })
-      .then(res => setControls(res.data.items?.map((c: any) => ({ id: c.id, name: c.name })) || []))
+      .then(res => setControls(res.data.items?.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })) || []))
       .catch(() => {});
   }, []);
 

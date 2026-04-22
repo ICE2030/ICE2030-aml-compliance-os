@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, X } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { trackUsage } from '@/hooks/useUsageTracking';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -28,7 +30,7 @@ interface PlanOption { id: string; title: string; }
 const STATUSES = ['planned', 'fieldwork', 'reporting', 'completed', 'cancelled'];
 
 export default function AuditEngagementPage() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [engagements, setEngagements] = useState<Engagement[]>([]);
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +68,8 @@ export default function AuditEngagementPage() {
     if (!body.plan_id) { delete body.plan_id; return; }
     const res = await fetch(`${API}/api/grc/audit-engagements`, { method: 'POST', headers, body: JSON.stringify(body) });
     if (res.ok) {
+      const created = await res.json().catch(() => ({} as { id?: string }));
+      trackUsage('create', { resource_type: 'audit_engagement', resource_id: created?.id, path: '/grc/audit/engagements' });
       setShowCreate(false);
       setForm({ title: '', title_ar: '', description: '', scope: '', objectives: '', plan_id: '', owner: '', status: 'planned', start_date: '', end_date: '' });
       fetchData();
@@ -74,6 +78,7 @@ export default function AuditEngagementPage() {
 
   const handleDelete = async (id: string) => {
     await fetch(`${API}/api/grc/audit-engagements/${id}`, { method: 'DELETE', headers });
+    trackUsage('delete', { resource_type: 'audit_engagement', resource_id: id, path: '/grc/audit/engagements' });
     fetchData();
   };
 
@@ -174,13 +179,19 @@ export default function AuditEngagementPage() {
       {loading ? (
         <div className="flex items-center justify-center h-32"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : engagements.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Search size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500">{language === 'ar' ? 'لا توجد مهام تدقيق بعد' : 'No audit engagements yet'}</p>
-            <p className="text-sm text-slate-400 mt-1">{language === 'ar' ? 'أنشئ خطة تدقيق أولاً ثم أضف مهام التدقيق' : 'Create an audit plan first, then add engagements'}</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Search size={48} />}
+          title={t('empty.engagements_title')}
+          hint={t('empty.engagements_hint')}
+          primaryAction={
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus size={16} className="me-2" />
+              {language === 'ar' ? 'إضافة مهمة' : 'Add Engagement'}
+            </Button>
+          }
+          showLoadSamples
+          onSamplesLoaded={fetchData}
+        />
       ) : (
         <div className="space-y-3">
           {engagements.map(eng => (

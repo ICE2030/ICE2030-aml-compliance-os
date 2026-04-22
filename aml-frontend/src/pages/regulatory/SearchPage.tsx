@@ -75,8 +75,9 @@ export default function SearchPage() {
         limit: 10,
       });
       setResult(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Search failed. Please try again.');
+    } catch (err) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail || 'Search failed. Please try again.');
     } finally {
       setLoading(false);
     }

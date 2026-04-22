@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { CheckCircle, Plus, X, XCircle, AlertCircle, MinusCircle } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { trackUsage } from '@/hooks/useUsageTracking';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -31,7 +33,7 @@ const TEST_TYPES = ['design', 'operating', 'both'];
 const RESULTS = ['effective', 'partially_effective', 'ineffective', 'not_tested'];
 
 export default function ControlTestPage() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [tests, setTests] = useState<ControlTestItem[]>([]);
   const [engagements, setEngagements] = useState<EngOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +78,8 @@ export default function ControlTestPage() {
     if (form.exceptions_found) body.exceptions_found = parseInt(form.exceptions_found);
     const res = await fetch(`${API}/api/grc/control-tests/${form.engagement_id}`, { method: 'POST', headers, body: JSON.stringify(body) });
     if (res.ok) {
+      const created = await res.json().catch(() => ({} as { id?: string }));
+      trackUsage('create', { resource_type: 'control_test', resource_id: created?.id, path: '/grc/audit/control-tests' });
       setShowCreate(false);
       setForm({ engagement_id: '', procedure: '', procedure_ar: '', test_type: 'both', tester: '', test_date: '', design_result: 'not_tested', operating_result: 'not_tested', overall_result: 'not_tested', sample_size: '', exceptions_found: '', notes: '' });
       fetchData();
@@ -84,6 +88,7 @@ export default function ControlTestPage() {
 
   const handleDelete = async (id: string) => {
     await fetch(`${API}/api/grc/control-tests/${id}`, { method: 'DELETE', headers });
+    trackUsage('delete', { resource_type: 'control_test', resource_id: id, path: '/grc/audit/control-tests' });
     fetchData();
   };
 
@@ -202,13 +207,19 @@ export default function ControlTestPage() {
       {loading ? (
         <div className="flex items-center justify-center h-32"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : tests.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <CheckCircle size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500">{language === 'ar' ? 'لا توجد اختبارات ضوابط بعد' : 'No control tests yet'}</p>
-            <p className="text-sm text-slate-400 mt-1">{language === 'ar' ? 'أنشئ مهمة تدقيق أولاً ثم أضف اختبارات الضوابط' : 'Create an engagement first, then add control tests'}</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<CheckCircle size={48} />}
+          title={t('empty.control_tests_title')}
+          hint={t('empty.control_tests_hint')}
+          primaryAction={
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus size={16} className="me-2" />
+              {language === 'ar' ? 'إضافة اختبار' : 'Add Test'}
+            </Button>
+          }
+          showLoadSamples
+          onSamplesLoaded={fetchData}
+        />
       ) : (
         <div className="space-y-3">
           {tests.map(test => (

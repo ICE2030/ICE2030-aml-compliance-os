@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ClipboardList, Plus, X } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { trackUsage } from '@/hooks/useUsageTracking';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -24,7 +26,7 @@ interface AuditPlan {
 const STATUSES = ['draft', 'approved', 'in_progress', 'completed', 'cancelled'];
 
 export default function AuditPlanPage() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [plans, setPlans] = useState<AuditPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -56,6 +58,8 @@ export default function AuditPlanPage() {
     if (!body.period_end) delete body.period_end;
     const res = await fetch(`${API}/api/grc/audit-plans`, { method: 'POST', headers, body: JSON.stringify(body) });
     if (res.ok) {
+      const created = await res.json().catch(() => ({} as { id?: string }));
+      trackUsage('create', { resource_type: 'audit_plan', resource_id: created?.id, path: '/grc/audit/plans' });
       setShowCreate(false);
       setForm({ title: '', title_ar: '', description: '', scope_summary: '', owner: '', status: 'draft', period_start: '', period_end: '' });
       fetchData();
@@ -64,6 +68,7 @@ export default function AuditPlanPage() {
 
   const handleDelete = async (id: string) => {
     await fetch(`${API}/api/grc/audit-plans/${id}`, { method: 'DELETE', headers });
+    trackUsage('delete', { resource_type: 'audit_plan', resource_id: id, path: '/grc/audit/plans' });
     fetchData();
   };
 
@@ -151,13 +156,19 @@ export default function AuditPlanPage() {
       {loading ? (
         <div className="flex items-center justify-center h-32"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : plans.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <ClipboardList size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500">{language === 'ar' ? 'لا توجد خطط تدقيق بعد' : 'No audit plans yet'}</p>
-            <p className="text-sm text-slate-400 mt-1">{language === 'ar' ? 'انقر "إضافة خطة" لإنشاء أول خطة تدقيق' : 'Click "Add Plan" to create the first audit plan'}</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<ClipboardList size={48} />}
+          title={t('empty.audit_plans_title')}
+          hint={t('empty.audit_plans_hint')}
+          primaryAction={
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus size={16} className="me-2" />
+              {language === 'ar' ? 'إضافة خطة' : 'Add Plan'}
+            </Button>
+          }
+          showLoadSamples
+          onSamplesLoaded={fetchData}
+        />
       ) : (
         <div className="space-y-3">
           {plans.map(plan => (

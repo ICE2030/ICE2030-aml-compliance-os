@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { AlertTriangle, Plus, X, MessageSquare } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { trackUsage } from '@/hooks/useUsageTracking';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -39,7 +41,7 @@ const F_STATUSES = ['draft', 'open', 'in_remediation', 'pending_closure', 'close
 const R_STATUSES = ['pending', 'accepted', 'in_progress', 'completed', 'overdue'];
 
 export default function AuditFindingPage() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [findings, setFindings] = useState<Finding[]>([]);
   const [engagements, setEngagements] = useState<EngOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +82,8 @@ export default function AuditFindingPage() {
     if (!body.due_date) delete body.due_date;
     const res = await fetch(`${API}/api/grc/audit-findings/${form.engagement_id}`, { method: 'POST', headers, body: JSON.stringify(body) });
     if (res.ok) {
+      const created = await res.json().catch(() => ({} as { id?: string }));
+      trackUsage('create', { resource_type: 'audit_finding', resource_id: created?.id, path: '/grc/audit/findings' });
       setShowCreate(false);
       setForm({ engagement_id: '', title: '', title_ar: '', description: '', description_ar: '', severity: 'medium', status: 'open', root_cause: '', owner: '', due_date: '' });
       fetchData();
@@ -88,6 +92,7 @@ export default function AuditFindingPage() {
 
   const handleDelete = async (id: string) => {
     await fetch(`${API}/api/grc/audit-findings/${id}`, { method: 'DELETE', headers });
+    trackUsage('delete', { resource_type: 'audit_finding', resource_id: id, path: '/grc/audit/findings' });
     fetchData();
   };
 
@@ -105,6 +110,8 @@ export default function AuditFindingPage() {
     if (!body.due_date) delete body.due_date;
     const res = await fetch(`${API}/api/grc/management-responses/${showResponse}`, { method: 'POST', headers, body: JSON.stringify(body) });
     if (res.ok) {
+      const created = await res.json().catch(() => ({} as { id?: string }));
+      trackUsage('create', { resource_type: 'management_response', resource_id: created?.id, path: '/grc/audit/findings', metadata: { finding_id: showResponse } });
       setRespForm({ response_text: '', owner: '', due_date: '', status: 'pending' });
       loadResponses(showResponse);
     }
@@ -210,13 +217,19 @@ export default function AuditFindingPage() {
       {loading ? (
         <div className="flex items-center justify-center h-32"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : findings.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <AlertTriangle size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500">{language === 'ar' ? 'لا توجد نتائج تدقيق بعد' : 'No audit findings yet'}</p>
-            <p className="text-sm text-slate-400 mt-1">{language === 'ar' ? 'أنشئ مهمة تدقيق أولاً ثم سجل النتائج' : 'Create an engagement first, then record findings'}</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<AlertTriangle size={48} />}
+          title={t('empty.findings_title')}
+          hint={t('empty.findings_hint')}
+          primaryAction={
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus size={16} className="me-2" />
+              {language === 'ar' ? 'إضافة نتيجة' : 'Add Finding'}
+            </Button>
+          }
+          showLoadSamples
+          onSamplesLoaded={fetchData}
+        />
       ) : (
         <div className="space-y-3">
           {findings.map(f => (

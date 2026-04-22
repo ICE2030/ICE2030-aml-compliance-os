@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import {
   Zap, Plus, X, CheckCircle, AlertTriangle, Clock, Scan, Link2, Filter,
 } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { trackUsage } from '@/hooks/useUsageTracking';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -46,7 +48,7 @@ const _ORIGINS = ['manual', 'pattern_generated', 'alert_generated', 'dashboard_g
 void _ORIGINS;
 
 export default function ActionCenterPage() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [actions, setActions] = useState<GRCAction[]>([]);
   const [summary, setSummary] = useState<ActionSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,6 +96,8 @@ export default function ActionCenterPage() {
       if (!body.due_date) delete body.due_date;
       const res = await fetch(`${API}/api/grc/actions`, { method: 'POST', headers, body: JSON.stringify(body) });
       if (!res.ok) { setError(`Failed to create action: ${res.status}`); return; }
+      const created = await res.json().catch(() => ({} as { id?: string }));
+      trackUsage('create', { resource_type: 'grc_action', resource_id: created?.id, path: '/grc/actions' });
       setShowCreate(false);
       setForm({ title: '', title_ar: '', description: '', description_ar: '', reason: '', reason_ar: '', priority: 'medium', source_type: 'manual', owner: '', due_date: '' });
       fetchActions();
@@ -107,6 +111,7 @@ export default function ActionCenterPage() {
         method: 'PUT', headers, body: JSON.stringify({ status: 'completed' }),
       });
       if (!res.ok) { setError(`Failed to complete action: ${res.status}`); return; }
+      trackUsage('update', { resource_type: 'grc_action', resource_id: id, path: '/grc/actions', metadata: { status: 'completed' } });
       fetchActions();
       fetchSummary();
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to complete action'); }
@@ -116,6 +121,7 @@ export default function ActionCenterPage() {
     try {
       const res = await fetch(`${API}/api/grc/actions/${id}`, { method: 'DELETE', headers });
       if (!res.ok) { setError(`Failed to delete action: ${res.status}`); return; }
+      trackUsage('delete', { resource_type: 'grc_action', resource_id: id, path: '/grc/actions' });
       fetchActions();
       fetchSummary();
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to delete action'); }
@@ -332,15 +338,19 @@ export default function ActionCenterPage() {
       {loading ? (
         <div className="flex items-center justify-center h-32"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : actions.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Zap size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500">{language === 'ar' ? 'لا توجد إجراءات بعد' : 'No actions yet'}</p>
-            <p className="text-sm text-slate-400 mt-1">
-              {language === 'ar' ? 'أنشئ إجراء أو افحص التنبيهات/الأنماط لتوليد إجراءات تلقائياً' : 'Create an action or scan alerts/patterns to auto-generate actions'}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Zap size={48} />}
+          title={t('empty.actions_title')}
+          hint={t('empty.actions_hint')}
+          primaryAction={
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus size={16} className="me-2" />
+              {language === 'ar' ? 'إضافة إجراء' : 'Add Action'}
+            </Button>
+          }
+          showLoadSamples
+          onSamplesLoaded={() => { fetchActions(); fetchSummary(); }}
+        />
       ) : (
         <div className="space-y-3">
           {actions.map(action => (

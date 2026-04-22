@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Wrench, Plus, X, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { trackUsage } from '@/hooks/useUsageTracking';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -34,7 +36,7 @@ interface Milestone {
 }
 
 export default function RemediationPage() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [actions, setActions] = useState<Action[]>([]);
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,8 @@ export default function RemediationPage() {
     if (!body.target_date) delete body.target_date;
     const res = await fetch(`${API}/api/grc/remediation`, { method: 'POST', headers, body: JSON.stringify(body) });
     if (res.ok) {
+      const created = await res.json().catch(() => ({} as { id?: string }));
+      trackUsage('create', { resource_type: 'remediation_action', resource_id: created?.id, path: '/grc/remediation' });
       setShowCreate(false);
       setForm({ issue_id: '', title: '', title_ar: '', description: '', description_ar: '', owner: '', target_date: '' });
       fetchData();
@@ -78,11 +82,13 @@ export default function RemediationPage() {
     const body: Record<string, unknown> = { status };
     if (progress_pct !== undefined) body.progress_pct = progress_pct;
     await fetch(`${API}/api/grc/remediation/${id}`, { method: 'PUT', headers, body: JSON.stringify(body) });
+    trackUsage('update', { resource_type: 'remediation_action', resource_id: id, path: '/grc/remediation', metadata: { status } });
     fetchData();
   };
 
   const handleDelete = async (id: string) => {
     await fetch(`${API}/api/grc/remediation/${id}`, { method: 'DELETE', headers });
+    trackUsage('delete', { resource_type: 'remediation_action', resource_id: id, path: '/grc/remediation' });
     fetchData();
   };
 
@@ -204,13 +210,19 @@ export default function RemediationPage() {
       {loading ? (
         <div className="flex items-center justify-center h-32"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : actions.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Wrench size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500">{language === 'ar' ? 'لم يتم إنشاء إجراءات علاجية بعد' : 'No remediation actions yet'}</p>
-            <p className="text-sm text-slate-400 mt-1">{language === 'ar' ? 'أنشئ مشكلة أولاً ثم أضف إجراءات علاجية' : 'Create an issue first, then add remediation actions'}</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Wrench size={48} />}
+          title={t('empty.remediations_title')}
+          hint={t('empty.remediations_hint')}
+          primaryAction={
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus size={16} className="me-2" />
+              {language === 'ar' ? 'إضافة إجراء' : 'Add Action'}
+            </Button>
+          }
+          showLoadSamples
+          onSamplesLoaded={fetchData}
+        />
       ) : (
         <div className="space-y-3">
           {actions.map(action => (

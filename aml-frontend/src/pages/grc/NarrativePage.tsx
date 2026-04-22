@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileText, RefreshCw, Edit3, Trash2, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { trackUsage } from '@/hooks/useUsageTracking';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -26,7 +28,7 @@ interface NarrativeSummary {
 }
 
 export default function NarrativePage() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [narratives, setNarratives] = useState<NarrativeSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -51,7 +53,11 @@ export default function NarrativePage() {
     setGenerating(true);
     try {
       const res = await fetch(`${API}/api/grc/narratives/generate`, { method: 'POST', headers });
-      if (res.ok) fetchNarratives();
+      if (res.ok) {
+        const created = await res.json().catch(() => ({} as { id?: string }));
+        trackUsage('create', { resource_type: 'narrative', resource_id: created?.id, path: '/grc/narratives' });
+        fetchNarratives();
+      }
     } catch { /* ignore */ }
     setGenerating(false);
   };
@@ -71,6 +77,7 @@ export default function NarrativePage() {
       await fetch(`${API}/api/grc/narratives/${id}`, {
         method: 'PUT', headers, body: JSON.stringify({ sections }),
       });
+      trackUsage('update', { resource_type: 'narrative', resource_id: id, path: '/grc/narratives' });
       setEditId(null);
       fetchNarratives();
     } catch { /* invalid JSON */ }
@@ -78,6 +85,7 @@ export default function NarrativePage() {
 
   const handleDelete = async (id: string) => {
     await fetch(`${API}/api/grc/narratives/${id}`, { method: 'DELETE', headers });
+    trackUsage('delete', { resource_type: 'narrative', resource_id: id, path: '/grc/narratives' });
     fetchNarratives();
   };
 
@@ -139,15 +147,21 @@ export default function NarrativePage() {
       {loading ? (
         <div className="flex items-center justify-center h-32"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : narratives.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500">{language === 'ar' ? 'لا توجد ملخصات بعد' : 'No narratives yet'}</p>
-            <p className="text-sm text-slate-400 mt-1">
-              {language === 'ar' ? 'انقر "توليد ملخص جديد" لإنشاء ملخص تنفيذي' : 'Click "Generate Summary" to create an executive narrative'}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<FileText size={48} />}
+          title={t('empty.narratives_title')}
+          hint={t('empty.narratives_hint')}
+          primaryAction={
+            <Button onClick={handleGenerate} disabled={generating}>
+              <RefreshCw size={16} className={`me-2 ${generating ? 'animate-spin' : ''}`} />
+              {generating
+                ? (language === 'ar' ? 'جاري التوليد...' : 'Generating...')
+                : (language === 'ar' ? 'توليد ملخص جديد' : 'Generate Summary')}
+            </Button>
+          }
+          showLoadSamples
+          onSamplesLoaded={fetchNarratives}
+        />
       ) : (
         <div className="space-y-6">
           {narratives.map(narrative => (
