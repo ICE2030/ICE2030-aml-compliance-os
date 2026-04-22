@@ -88,12 +88,16 @@ class UsageService:
         """Fire-and-forget event recording that never raises.
 
         Used inside request handlers so a telemetry failure cannot break a
-        user-visible action.
+        user-visible action. Runs inside a SAVEPOINT so a failure here cannot
+        leave the caller's session in a PendingRollback state.
         """
         try:
-            await UsageService.record_event(db, **kwargs)
+            async with db.begin_nested():
+                await UsageService.record_event(db, **kwargs)
         except Exception:
             # Intentionally swallowed — this is a best-effort telemetry call.
+            # The nested transaction has already rolled back the savepoint,
+            # so the outer session remains usable for the caller's commit.
             pass
 
     @staticmethod
