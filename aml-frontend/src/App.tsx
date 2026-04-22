@@ -15,6 +15,32 @@ import ComplianceInquiryPage from '@/pages/ComplianceInquiryPage';
 import SearchPage from '@/pages/regulatory/SearchPage';
 import ReviewQueuePage from '@/pages/regulatory/ReviewQueuePage';
 import IntelligenceDashboard from '@/pages/IntelligenceDashboard';
+import ControlsPage from '@/pages/phase4/ControlsPage';
+import EvidencePage from '@/pages/phase4/EvidencePage';
+import GapAnalysisPage from '@/pages/phase4/GapAnalysisPage';
+import ExecutiveReportPage from '@/pages/phase4/ExecutiveReportPage';
+import ControlSuggestionsPage from '@/pages/phase5a/ControlSuggestionsPage';
+import EvidenceAlertsPage from '@/pages/phase5a/EvidenceAlertsPage';
+import RiskTrendsDashboard from '@/pages/phase5b/RiskTrendsDashboard';
+import PatternDetectionPage from '@/pages/phase5b/PatternDetectionPage';
+import ChangeDetectionPage from '@/pages/phaseR/ChangeDetectionPage';
+import RegulatoryAlertsPage from '@/pages/phaseR/RegulatoryAlertsPage';
+import FreshnessDashboardPage from '@/pages/phaseR/FreshnessDashboardPage';
+import VersionComparePage from '@/pages/phaseR/VersionComparePage';
+import GRCDashboardPage from '@/pages/grc/GRCDashboardPage';
+import RiskRegisterPage from '@/pages/grc/RiskRegisterPage';
+import IssueManagementPage from '@/pages/grc/IssueManagementPage';
+import RemediationPage from '@/pages/grc/RemediationPage';
+import AuditPlanPage from '@/pages/grc/AuditPlanPage';
+import AuditEngagementPage from '@/pages/grc/AuditEngagementPage';
+import ControlTestPage from '@/pages/grc/ControlTestPage';
+import AuditFindingPage from '@/pages/grc/AuditFindingPage';
+import ActionCenterPage from '@/pages/grc/ActionCenterPage';
+import NarrativePage from '@/pages/grc/NarrativePage';
+import AdminPage from '@/pages/grc/AdminPage';
+import DemoFlowsPage from '@/pages/DemoFlowsPage';
+import UsageDashboardPage from '@/pages/UsageDashboardPage';
+import { useUsageTracking } from '@/hooks/useUsageTracking';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -34,6 +60,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user } = useAuth();
+  useUsageTracking();
 
   return (
     <Routes>
@@ -119,6 +146,181 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <IntelligenceDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/controls" element={
+        <ProtectedRoute>
+          <Layout>
+            <ControlsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/evidence" element={
+        <ProtectedRoute>
+          <Layout>
+            <EvidencePage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/gap-analysis" element={
+        <ProtectedRoute>
+          <Layout>
+            <GapAnalysisPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/executive-report" element={
+        <ProtectedRoute>
+          <Layout>
+            <ExecutiveReportPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/control-suggestions" element={
+        <ProtectedRoute>
+          <Layout>
+            <ControlSuggestionsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/evidence-alerts" element={
+        <ProtectedRoute>
+          <Layout>
+            <EvidenceAlertsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/risk-trends" element={
+        <ProtectedRoute>
+          <Layout>
+            <RiskTrendsDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/pattern-detection" element={
+        <ProtectedRoute>
+          <Layout>
+            <PatternDetectionPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/change-detection" element={
+        <ProtectedRoute>
+          <Layout>
+            <ChangeDetectionPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reg-alerts" element={
+        <ProtectedRoute>
+          <Layout>
+            <RegulatoryAlertsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/freshness" element={
+        <ProtectedRoute>
+          <Layout>
+            <FreshnessDashboardPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/version-compare" element={
+        <ProtectedRoute>
+          <Layout>
+            <VersionComparePage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc" element={
+        <ProtectedRoute>
+          <Layout>
+            <GRCDashboardPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/risks" element={
+        <ProtectedRoute>
+          <Layout>
+            <RiskRegisterPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/issues" element={
+        <ProtectedRoute>
+          <Layout>
+            <IssueManagementPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/remediation" element={
+        <ProtectedRoute>
+          <Layout>
+            <RemediationPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/audit-plans" element={
+        <ProtectedRoute>
+          <Layout>
+            <AuditPlanPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/audit-engagements" element={
+        <ProtectedRoute>
+          <Layout>
+            <AuditEngagementPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/control-tests" element={
+        <ProtectedRoute>
+          <Layout>
+            <ControlTestPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/audit-findings" element={
+        <ProtectedRoute>
+          <Layout>
+            <AuditFindingPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/actions" element={
+        <ProtectedRoute>
+          <Layout>
+            <ActionCenterPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/narratives" element={
+        <ProtectedRoute>
+          <Layout>
+            <NarrativePage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/grc/admin" element={
+        <ProtectedRoute>
+          <Layout>
+            <AdminPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/demo-flows" element={
+        <ProtectedRoute>
+          <Layout>
+            <DemoFlowsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/usage" element={
+        <ProtectedRoute>
+          <Layout>
+            <UsageDashboardPage />
           </Layout>
         </ProtectedRoute>
       } />

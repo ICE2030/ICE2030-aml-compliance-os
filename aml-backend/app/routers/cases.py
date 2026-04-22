@@ -1,4 +1,5 @@
 import random
+import logging
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,8 +14,11 @@ from app.schemas.case import (
 )
 from app.services.audit_service import AuditService
 from app.services.ai_service import AIAssistantService
+from app.services.intelligence_service import DecisionCaptureService
 from app.models.base import generate_uuid
 from app.models.interaction import Interaction
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/cases", tags=["Case Management"])
 
@@ -24,6 +28,7 @@ def generate_case_number():
 
 
 @router.post("/", response_model=CaseResponse)
+@router.post("", response_model=CaseResponse, include_in_schema=False)
 async def create_case(
     data: CaseCreate,
     current_user: User = Depends(get_current_user),
@@ -65,6 +70,7 @@ async def create_case(
 
 
 @router.get("/", response_model=list[CaseResponse])
+@router.get("", response_model=list[CaseResponse], include_in_schema=False)
 async def list_cases(
     status: str = Query(None),
     priority: str = Query(None),
@@ -166,6 +172,67 @@ async def decide_case(
         "close_other": CaseStatus.CLOSED_OTHER,
     }
 
+    # Bridge to Phase 3 intelligence layer BEFORE updating case fields,
+    # so capture_decision reads the original ai_suggestion_confidence (not user's).
+    ai_disposition = None
+    if decision.ai_suggestion_accepted is True:
+        ai_disposition = "accepted"
+    elif decision.ai_suggestion_accepted is False:
+        ai_disposition = "rejected"
+
+    try:
+        await DecisionCaptureService.capture_decision(
+            db=db,
+            case_id=case_id,
+            user_id=current_user.id,
+            decision=decision.decision,
+            reasoning_text=decision.reasoning,
+            user_confidence=decision.confidence_level,
+            reasoning_categories=None,
+            investigation_time_seconds=None,
+            review_time_seconds=None,
+            ai_disposition=ai_disposition,
+        )
+    except Exception as e:
+        await db.rollback()
+        # Re-fetch the case after rollback since the previous instance is detached
+        result = await db.execute(select(Case).where(Case.id == case_id))
+        case = result.scalar_one_or_none()
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found after rollback")
+        logger.warning(f"Failed to create DecisionCapture for case {case_id}: {e}")
+
+        # Fallback: create Interaction record so the analytics/loop pipeline
+        # always has a record of the decision even when DecisionCapture fails.
+        try:
+            fallback_interaction = Interaction(
+                id=generate_uuid(),
+                user_id=current_user.id,
+                interaction_type="case_decision",
+                resource_type="case",
+                resource_id=case_id,
+                action=f"decide_{decision.decision}",
+                decision=decision.decision,
+                reasoning=decision.reasoning,
+                confidence_level=decision.confidence_level,
+                time_to_decision_seconds=time_to_decision * 60 if time_to_decision else None,
+                ai_suggestion_given=case.ai_suggestion,
+                ai_suggestion_accepted=decision.ai_suggestion_accepted,
+                extra_data={
+                    "fallback": True,
+                },
+            )
+            db.add(fallback_interaction)
+            await db.flush()
+        except Exception as e2:
+            await db.rollback()
+            result = await db.execute(select(Case).where(Case.id == case_id))
+            case = result.scalar_one_or_none()
+            if not case:
+                raise HTTPException(status_code=404, detail="Case not found after rollback")
+            logger.warning(f"Failed to create fallback Interaction for case {case_id}: {e2}")
+
+    # Now update case fields (after capture_decision read the original values)
     case.decision = decision.decision
     case.decision_reasoning = decision.reasoning
     case.decision_confidence = decision.confidence_level
@@ -174,23 +241,6 @@ async def decide_case(
     case.status = status_map.get(decision.decision, CaseStatus.CLOSED_OTHER)
     case.time_to_decision_minutes = time_to_decision
     case.ai_suggestion_accepted = decision.ai_suggestion_accepted
-
-    # Capture interaction
-    interaction = Interaction(
-        id=generate_uuid(),
-        user_id=current_user.id,
-        interaction_type="case_decision",
-        action=f"decide_{decision.decision}",
-        resource_type="case",
-        resource_id=case_id,
-        decision=decision.decision,
-        reasoning=decision.reasoning,
-        confidence_level=decision.confidence_level,
-        time_to_decision_seconds=time_to_decision * 60 if time_to_decision else None,
-        ai_suggestion_given=case.ai_suggestion,
-        ai_suggestion_accepted=decision.ai_suggestion_accepted,
-    )
-    db.add(interaction)
 
     await db.flush()
     await AuditService.log(
