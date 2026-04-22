@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import {
   Shield, Plus, TrendingUp, TrendingDown, Minus, Sparkles, X, AlertTriangle,
 } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { trackUsage } from '@/hooks/useUsageTracking';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -38,7 +40,7 @@ const STATUSES = ['identified', 'assessed', 'treating', 'monitoring', 'closed'];
 const TREATMENTS = ['accept', 'mitigate', 'transfer', 'avoid'];
 
 export default function RiskRegisterPage() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [risks, setRisks] = useState<Risk[]>([]);
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,8 @@ export default function RiskRegisterPage() {
     try {
       const res = await fetch(`${API}/api/grc/risks`, { method: 'POST', headers, body: JSON.stringify(form) });
       if (!res.ok) { setError(`Failed to create risk: ${res.status}`); return; }
+      const created = await res.json().catch(() => ({}));
+      trackUsage('create', { resource_type: 'risk', resource_id: created.id, path: '/grc/risks' });
       setShowCreate(false);
       setForm({ title: '', title_ar: '', description: '', description_ar: '', category: 'operational', inherent_likelihood: 'possible', inherent_impact: 'moderate', residual_likelihood: 'possible', residual_impact: 'moderate', treatment_strategy: 'mitigate', owner: '', business_unit: '', root_cause: '' });
       fetchData();
@@ -88,6 +92,7 @@ export default function RiskRegisterPage() {
     try {
       const res = await fetch(`${API}/api/grc/risks/${id}`, { method: 'DELETE', headers });
       if (!res.ok) { setError(`Failed to delete risk: ${res.status}`); return; }
+      trackUsage('delete', { resource_type: 'risk', resource_id: id, path: '/grc/risks' });
       fetchData();
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to delete risk'); }
   };
@@ -244,13 +249,19 @@ export default function RiskRegisterPage() {
       {loading ? (
         <div className="flex items-center justify-center h-32"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : risks.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Shield size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500">{language === 'ar' ? 'لم يتم تسجيل مخاطر بعد' : 'No risks registered yet'}</p>
-            <p className="text-sm text-slate-400 mt-1">{language === 'ar' ? 'انقر "إضافة مخاطرة" لبدء بناء سجل المخاطر' : 'Click "Add Risk" to start building the risk register'}</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Shield size={48} />}
+          title={t('empty.risks_title')}
+          hint={t('empty.risks_hint')}
+          primaryAction={
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus size={16} className="me-2" />
+              {language === 'ar' ? 'إضافة مخاطرة' : 'Add Risk'}
+            </Button>
+          }
+          showLoadSamples
+          onSamplesLoaded={fetchData}
+        />
       ) : (
         <div className="space-y-3">
           {risks.map(risk => (

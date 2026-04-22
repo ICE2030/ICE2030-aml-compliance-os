@@ -7,7 +7,7 @@ import {
   Search, ClipboardCheck, Brain, ShieldCheck, FileCheck, Target, PieChart,
   Lightbulb, Bell, TrendingUp, SearchCode, GitCompare, BellRing, Activity, Layers,
   Gauge, ShieldAlert, AlertOctagon, Wrench, ClipboardList, Search as SearchIcon, CheckCircle, AlertTriangle as AlertTriangleIcon2,
-  Zap, FileText as FileTextIcon2, Settings,
+  Zap, FileText as FileTextIcon2, Settings, Compass, Activity as ActivityIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -48,6 +48,8 @@ const navItems = [
   { key: 'nav.action_center', path: '/grc/actions', icon: Zap },
   { key: 'nav.narratives', path: '/grc/narratives', icon: FileTextIcon2 },
   { key: 'nav.admin', path: '/grc/admin', icon: Settings },
+  { key: 'nav.demo_flows', path: '/demo-flows', icon: Compass },
+  { key: 'nav.usage', path: '/usage', icon: ActivityIcon },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

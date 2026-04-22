@@ -100,6 +100,21 @@ async def seed_phase4_data():
             logging.getLogger(__name__).error(f"Failed to seed Phase 4 data: {e}")
 
 
+async def seed_phase_v_data():
+    """Seed Phase V realistic SAMA/CMA/IA GRC scenarios (idempotent)."""
+    from app.services.grc.phase_v_seed_service import PhaseVSeedService
+    async with async_session() as db:
+        try:
+            result = await PhaseVSeedService.seed_all(db)
+            await db.commit()
+            if any(v > 0 for v in result.values()):
+                import logging
+                logging.getLogger(__name__).info(f"Seeded Phase V sample data: {result}")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to seed Phase V data: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import app.models  # noqa: F811 - imports all models to register with SQLAlchemy
@@ -109,6 +124,7 @@ async def lifespan(app: FastAPI):
     await seed_default_data()
     await seed_regulatory_data()
     await seed_phase4_data()
+    await seed_phase_v_data()
     yield
 
 
@@ -141,6 +157,7 @@ from app.routers import grc_risks, grc_issues, grc_remediation, grc_dashboard
 from app.routers import grc_audit_plans, grc_audit_engagements, grc_control_tests, grc_audit_findings, grc_management_responses
 from app.routers import grc_actions, grc_narratives, grc_cross_links
 from app.routers import phase_p
+from app.routers import demo_flows, usage
 
 app.include_router(auth.router)
 app.include_router(onboarding.router)
@@ -172,6 +189,8 @@ app.include_router(grc_actions.router)
 app.include_router(grc_narratives.router)
 app.include_router(grc_cross_links.router)
 app.include_router(phase_p.router)
+app.include_router(demo_flows.router)
+app.include_router(usage.router)
 
 
 @app.get("/healthz")

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { AlertTriangle, Plus, X, Clock, CheckCircle } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { trackUsage } from '@/hooks/useUsageTracking';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -29,7 +31,7 @@ const SEVERITIES = ['low', 'medium', 'high', 'critical'];
 const STATUSES = ['open', 'in_progress', 'pending_closure', 'closed', 'overdue', 'escalated'];
 
 export default function IssueManagementPage() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [issues, setIssues] = useState<GRCIssue[]>([]);
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +73,8 @@ export default function IssueManagementPage() {
       if (!body.due_date) delete body.due_date;
       const res = await fetch(`${API}/api/grc/issues`, { method: 'POST', headers, body: JSON.stringify(body) });
       if (!res.ok) { setError(`Failed to create issue: ${res.status}`); return; }
+      const created = await res.json().catch(() => ({}));
+      trackUsage('create', { resource_type: 'issue', resource_id: created.id, path: '/grc/issues' });
       setShowCreate(false);
       setForm({ title: '', title_ar: '', description: '', description_ar: '', source: 'compliance', severity: 'medium', owner: '', due_date: '' });
       fetchData();
@@ -81,6 +85,7 @@ export default function IssueManagementPage() {
     try {
       const res = await fetch(`${API}/api/grc/issues/${id}`, { method: 'PUT', headers, body: JSON.stringify({ status: newStatus }) });
       if (!res.ok) { setError(`Failed to update issue: ${res.status}`); return; }
+      trackUsage('update', { resource_type: 'issue', resource_id: id, path: '/grc/issues', metadata: { status: newStatus } });
       fetchData();
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to update issue'); }
   };
@@ -89,6 +94,7 @@ export default function IssueManagementPage() {
     try {
       const res = await fetch(`${API}/api/grc/issues/${id}`, { method: 'DELETE', headers });
       if (!res.ok) { setError(`Failed to delete issue: ${res.status}`); return; }
+      trackUsage('delete', { resource_type: 'issue', resource_id: id, path: '/grc/issues' });
       fetchData();
     } catch (e) { setError(e instanceof Error ? e.message : 'Failed to delete issue'); }
   };
@@ -227,13 +233,19 @@ export default function IssueManagementPage() {
       {loading ? (
         <div className="flex items-center justify-center h-32"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : issues.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <AlertTriangle size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500">{language === 'ar' ? 'لم يتم تسجيل مشاكل بعد' : 'No issues registered yet'}</p>
-            <p className="text-sm text-slate-400 mt-1">{language === 'ar' ? 'انقر "إضافة مشكلة" لبدء تتبع المشاكل' : 'Click "Add Issue" to start tracking issues'}</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<AlertTriangle size={48} />}
+          title={t('empty.issues_title')}
+          hint={t('empty.issues_hint')}
+          primaryAction={
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus size={16} className="me-2" />
+              {language === 'ar' ? 'إضافة مشكلة' : 'Add Issue'}
+            </Button>
+          }
+          showLoadSamples
+          onSamplesLoaded={fetchData}
+        />
       ) : (
         <div className="space-y-3">
           {issues.map(issue => (

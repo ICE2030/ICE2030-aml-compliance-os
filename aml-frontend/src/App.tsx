@@ -38,6 +38,9 @@ import AuditFindingPage from '@/pages/grc/AuditFindingPage';
 import ActionCenterPage from '@/pages/grc/ActionCenterPage';
 import NarrativePage from '@/pages/grc/NarrativePage';
 import AdminPage from '@/pages/grc/AdminPage';
+import DemoFlowsPage from '@/pages/DemoFlowsPage';
+import UsageDashboardPage from '@/pages/UsageDashboardPage';
+import { useUsageTracking } from '@/hooks/useUsageTracking';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -57,6 +60,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user } = useAuth();
+  useUsageTracking();
 
   return (
     <Routes>
@@ -303,6 +307,20 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout>
             <AdminPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/demo-flows" element={
+        <ProtectedRoute>
+          <Layout>
+            <DemoFlowsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/usage" element={
+        <ProtectedRoute>
+          <Layout>
+            <UsageDashboardPage />
           </Layout>
         </ProtectedRoute>
       } />
